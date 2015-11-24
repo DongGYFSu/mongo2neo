@@ -4,11 +4,9 @@ import com.mongodb.client.MongoDatabase;
 import java.io.File;
 import java.util.*;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.bson.Document;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.unsafe.impl.batchimport.cache.idmapping.string.Radix;
 
 public class Main {
 
@@ -91,7 +89,7 @@ public class Main {
                              "MERGE (u:User {_id: '" + admin_id + "'})" +
                             "MERGE (n:Network {_id:'" + _id + "'})" +
                             "SET n.name='" + name + "'" +
-                            "CREATE UNIQUE (u)-[:ADMIN_OF]->(n)," +
+                            "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true]->(n)," +
                             "(n)-[:LOCATED_IN]->(ci)," +
                             "(ci)-[:LOCATED_IN]->(co)";
                     graphDb.execute(query);
@@ -99,14 +97,14 @@ public class Main {
                     String query = "MERGE (u:User {_id: '" + admin_id + "'})" +
                             "MERGE (n:Network {_id:'" + _id + "'})" +
                             "SET n.name='" + name + "'" +
-                            "CREATE UNIQUE (u)-[:ADMIN_OF]->(n)";
+                            "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
                     graphDb.execute(query);
                 }
             } else {
                 String query = "MERGE (u:User {_id: '" + admin_id + "'})" +
                         "MERGE (n:Network {_id:'" + _id + "'})" +
                         "SET n.name='" + name + "'" +
-                        "CREATE UNIQUE (u)-[:ADMIN_OF]->(n)";
+                        "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true]->(n)";
                 graphDb.execute(query);
             }
             List uppers = (List) network.get("uppers");
@@ -115,7 +113,7 @@ public class Main {
                     if (uppers.get(i) != admin_id) {
                         String query = "MERGE (u:User {_id: '" + uppers.get(i) + "'})" +
                                 "MERGE (n:Network {_id:'" + _id + "'})" +
-                                "CREATE UNIQUE (u)-[:MEMBER_OF]->(n)";
+                                "CREATE UNIQUE (u)-[:MEMBER_OF {admin:false]->(n)";
                         graphDb.execute(query);
                     }
                 }
@@ -154,7 +152,7 @@ public class Main {
                             "t.privacy_type=" + privacy_type + "," +
                             "t.type='"+ type_partup + "'," +
                             "t.phase='" + phase + "'" +
-                            "CREATE UNIQUE (u)-[:CREATOR_OF {comments:0, contributions:0}]->(t)," +
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0}]->(t)," +
                             "(t)-[:LOCATED_IN]->(ci)," +
                             "(ci)-[:LOCATED_IN]->(co)";
                     graphDb.execute(user_query);
@@ -168,7 +166,7 @@ public class Main {
                             "t.privacy_type=" + privacy_type + "," +
                             "t.type='"+ type_partup + "'," +
                             "t.phase='" + phase + "'" +
-                            "CREATE UNIQUE (u)-[:CREATOR_OF {comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
                     graphDb.execute(user_query);
                 }
             } else{
@@ -181,7 +179,7 @@ public class Main {
                         "t.privacy_type=" + privacy_type + "," +
                         "t.type='"+ type_partup + "'," +
                         "t.phase='" + phase + "'" +
-                        "CREATE UNIQUE (u)-[:CREATOR_OF {comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                        "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
                 graphDb.execute(user_query);
             }
             List partners = (List) partup.get("uppers");
@@ -189,7 +187,7 @@ public class Main {
                 if (!partners.get(i).equals(creator_id)){
                     String query = "MERGE (u:User {_id: '" + partners.get(i) + "'})" +
                             "MERGE (t:Team {_id:'" + _id + "'})" +
-                            "CREATE UNIQUE (u)-[:PARTNER_IN {comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:false, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -237,7 +235,7 @@ public class Main {
             if (verified) {
                 String upper_id = (String) contribution.get("upper_id");
                 String partup_id = (String) contribution.get("partup_id");
-                String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r]->(t:Team {_id: '" + partup_id + "'})" +
+                String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:PARTNER_IN]->(t:Team {_id: '" + partup_id + "'})" +
                         "SET r.contributions=r.contributions+1";
                 graphDb.execute(query);
                 count_contributions = count_contributions + 1;
@@ -251,7 +249,7 @@ public class Main {
             String rated_upper_id = (String) rating.get("rated_upper_id");
             String partup_id = (String) rating.get("partup_id");
             int rating_value = (int) rating.get("rating");
-            String query = "MATCH (u:User {_id: '" + rated_upper_id + "'})-[r]->(t:Team {_id: '" + partup_id + "'})" +
+            String query = "MATCH (u:User {_id: '" + rated_upper_id + "'})-[r:PARTNER_IN]->(t:Team {_id: '" + partup_id + "'})" +
                   "SET r.ratings=r.ratings+["+ rating_value + "]";
             graphDb.execute(query);
         }
