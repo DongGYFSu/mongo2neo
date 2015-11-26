@@ -42,8 +42,8 @@ public class Main {
                             "SET u.name='" + name + "'," +
                             "u.language='" + language + "'," +
                             "u.tags=[]" +
-                            "CREATE UNIQUE (u)-[:LOCATED_IN]->(ci)," +
-                            "(ci)-[:LOCATED_IN]->(co)";
+                            "CREATE UNIQUE (u)-[:LIVES_IN]->(ci)," +
+                            "(ci)-[:LIVES_IN]->(co)";
                     graphDb.execute(user_query);
                 } else {
                     String user_query = "MERGE (u:User {_id:'" + _id + "'})" +
@@ -86,10 +86,10 @@ public class Main {
                     String query = "MERGE (ci:City {_id: '" + place_id + "'})" +
                             "ON CREATE SET ci.name= '" + city + "'" +
                             "MERGE (co:Country {name: '" + country + "'})" +
-                             "MERGE (u:User {_id: '" + admin_id + "'})" +
+                            "MERGE (u:User {_id: '" + admin_id + "'})" +
                             "MERGE (n:Network {_id:'" + _id + "'})" +
                             "SET n.name='" + name + "'" +
-                            "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true]->(n)," +
+                            "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)," +
                             "(n)-[:LOCATED_IN]->(ci)," +
                             "(ci)-[:LOCATED_IN]->(co)";
                     graphDb.execute(query);
@@ -104,7 +104,7 @@ public class Main {
                 String query = "MERGE (u:User {_id: '" + admin_id + "'})" +
                         "MERGE (n:Network {_id:'" + _id + "'})" +
                         "SET n.name='" + name + "'" +
-                        "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true]->(n)";
+                        "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
                 graphDb.execute(query);
             }
             List uppers = (List) network.get("uppers");
@@ -113,7 +113,7 @@ public class Main {
                     if (uppers.get(i) != admin_id) {
                         String query = "MERGE (u:User {_id: '" + uppers.get(i) + "'})" +
                                 "MERGE (n:Network {_id:'" + _id + "'})" +
-                                "CREATE UNIQUE (u)-[:MEMBER_OF {admin:false]->(n)";
+                                "CREATE UNIQUE (u)-[:MEMBER_OF {admin:false}]->(n)";
                         graphDb.execute(query);
                     }
                 }
@@ -121,8 +121,8 @@ public class Main {
         }
         System.out.println(networks.size() + " networks imported into Neo4j.");
 
-        //partups
-        List<Document> partups = MDB.getCollection("Partups").find().into(new ArrayList<Document>());
+        //Teams
+        List<Document> partups = MDB.getCollection("Teams").find().into(new ArrayList<Document>());
         for (Document partup : partups) {
             String _id = (String) partup.get("_id");
             String name_raw = (String) partup.get("name");
@@ -133,30 +133,47 @@ public class Main {
             int privacy_type = (int) partup.get("privacy_type");
             String type_partup = (String) partup.get("type");
             String phase = (String) partup.get("phase");
-            Document location = (Document) partup.get("location");
-            if (location != null) {
-                String place_id = (String) location.get("place_id");
-                if (place_id != null) {
-                    String city_raw = (String) location.get("city");
-                    String city = city_raw.replace("'", "");
-                    String country = (String) location.get("country");
-                    String user_query = "MERGE (ci:City {_id: '" + place_id + "'})" +
-                            "ON CREATE SET ci.name= '" + city + "'" +
-                            "MERGE (co:Country {name: '" + country + "'})" +
-                            "MERGE (u:User {_id: '" + creator_id + "'})" +
-                            "MERGE (t:Team {_id:'" + _id + "'})" +
-                            "SET t.name='" + name + "'," +
-                            "t.tags=[]," +
-                            "t.purpose='"+ purpose +"'," +
-                            "t.language='" + language + "'," +
-                            "t.privacy_type=" + privacy_type + "," +
-                            "t.type='"+ type_partup + "'," +
-                            "t.phase='" + phase + "'" +
-                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0}]->(t)," +
-                            "(t)-[:LOCATED_IN]->(ci)," +
-                            "(ci)-[:LOCATED_IN]->(co)";
-                    graphDb.execute(user_query);
-                } else {
+            String network_id = (String) partup.get("network_id");
+            if (network_id != null) {
+                Document location = (Document) partup.get("location");
+                if (location != null) {
+                    String place_id = (String) location.get("place_id");
+                    if (place_id != null) {
+                        String city_raw = (String) location.get("city");
+                        String city = city_raw.replace("'", "");
+                        String country = (String) location.get("country");
+                        String user_query = "MERGE (ci:City {_id: '" + place_id + "'})" +
+                                "ON CREATE SET ci.name= '" + city + "'" +
+                                "MERGE (co:Country {name: '" + country + "'})" +
+                                "MERGE (n:Network {_id: '" + network_id + "'})" +
+                                "MERGE (u:User {_id: '" + creator_id + "'})" +
+                                "MERGE (t:Team {_id:'" + _id + "'})" +
+                                "SET t.name='" + name + "'," +
+                                "t.tags=[]," +
+                                "t.purpose='"+ purpose +"'," +
+                                "t.language='" + language + "'," +
+                                "t.privacy_type=" + privacy_type + "," +
+                                "t.type='"+ type_partup + "'," +
+                                "t.phase='" + phase + "'" +
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)," +
+                                "(t)-[:PART_OF]->(n)," +
+                                "(t)-[:LOCATED_IN]->(ci)," +
+                                "(ci)-[:LOCATED_IN]->(co)";
+                        graphDb.execute(user_query);
+                    } else {
+                        String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
+                                "MERGE (t:Team {_id:'" + _id + "'})" +
+                                "SET t.name='" + name + "'," +
+                                "t.tags=[]," +
+                                "t.purpose='"+ purpose +"'," +
+                                "t.language='" + language + "'," +
+                                "t.privacy_type=" + privacy_type + "," +
+                                "t.type='"+ type_partup + "'," +
+                                "t.phase='" + phase + "'" +
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                        graphDb.execute(user_query);
+                    }
+                } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
                             "MERGE (t:Team {_id:'" + _id + "'})" +
                             "SET t.name='" + name + "'," +
@@ -169,18 +186,56 @@ public class Main {
                             "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
                     graphDb.execute(user_query);
                 }
-            } else{
-                String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
-                        "MERGE (t:Team {_id:'" + _id + "'})" +
-                        "SET t.name='" + name + "'," +
-                        "t.tags=[]," +
-                        "t.purpose='"+ purpose +"'," +
-                        "t.language='" + language + "'," +
-                        "t.privacy_type=" + privacy_type + "," +
-                        "t.type='"+ type_partup + "'," +
-                        "t.phase='" + phase + "'" +
-                        "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
-                graphDb.execute(user_query);
+            } else {
+                Document location = (Document) partup.get("location");
+                if (location != null) {
+                    String place_id = (String) location.get("place_id");
+                    if (place_id != null) {
+                        String city_raw = (String) location.get("city");
+                        String city = city_raw.replace("'", "");
+                        String country = (String) location.get("country");
+                        String user_query = "MERGE (ci:City {_id: '" + place_id + "'})" +
+                                "ON CREATE SET ci.name= '" + city + "'" +
+                                "MERGE (co:Country {name: '" + country + "'})" +
+                                "MERGE (u:User {_id: '" + creator_id + "'})" +
+                                "MERGE (t:Team {_id:'" + _id + "'})" +
+                                "SET t.name='" + name + "'," +
+                                "t.tags=[]," +
+                                "t.purpose='"+ purpose +"'," +
+                                "t.language='" + language + "'," +
+                                "t.privacy_type=" + privacy_type + "," +
+                                "t.type='"+ type_partup + "'," +
+                                "t.phase='" + phase + "'" +
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)," +
+                                "(t)-[:LOCATED_IN]->(ci)," +
+                                "(ci)-[:LOCATED_IN]->(co)";
+                        graphDb.execute(user_query);
+                    } else {
+                        String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
+                                "MERGE (t:Team {_id:'" + _id + "'})" +
+                                "SET t.name='" + name + "'," +
+                                "t.tags=[]," +
+                                "t.purpose='"+ purpose +"'," +
+                                "t.language='" + language + "'," +
+                                "t.privacy_type=" + privacy_type + "," +
+                                "t.type='"+ type_partup + "'," +
+                                "t.phase='" + phase + "'" +
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                        graphDb.execute(user_query);
+                    }
+                } else{
+                    String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
+                            "MERGE (t:Team {_id:'" + _id + "'})" +
+                            "SET t.name='" + name + "'," +
+                            "t.tags=[]," +
+                            "t.purpose='"+ purpose +"'," +
+                            "t.language='" + language + "'," +
+                            "t.privacy_type=" + privacy_type + "," +
+                            "t.type='"+ type_partup + "'," +
+                            "t.phase='" + phase + "'" +
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                    graphDb.execute(user_query);
+                }
             }
             List partners = (List) partup.get("uppers");
             for (int i = 0; i < partners.size(); i++) {
