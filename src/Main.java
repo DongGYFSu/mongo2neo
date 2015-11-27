@@ -15,7 +15,7 @@ public class Main {
         MongoClient mongoClient = new MongoClient();
         MongoDatabase MDB = (MongoDatabase) mongoClient.getDatabase("partup");
 
-        String DB_PATH = "neo/data/graph.db";
+        String DB_PATH = "data/graph.db";
         GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase( new File( DB_PATH ));
         registerShutdownHook( graphDb );
 
