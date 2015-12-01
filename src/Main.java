@@ -2,6 +2,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import org.bson.Document;
@@ -141,6 +142,11 @@ public class Main {
             int privacy_type = (int) partup.get("privacy_type");
             String type_partup = (String) partup.get("type");
             String phase = (String) partup.get("phase");
+            Integer activity_count = (Integer) partup.get("activity_count");
+            Date end_date_raw = (Date) partup.get("end_date");
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
+            String end_date = formatter.format(end_date_raw);
+//            Date
             String network_id = (String) partup.get("network_id");
             if (network_id != null) {
                 Document location = (Document) partup.get("location");
@@ -157,13 +163,15 @@ public class Main {
                                 "MERGE (u:User {_id: '" + creator_id + "'})" +
                                 "MERGE (t:Team {_id:'" + _id + "'})" +
                                 "SET t.name='" + name + "'," +
+                                "t.end_date='" + end_date + "'," +
                                 "t.tags=[]," +
                                 "t.purpose='"+ purpose +"'," +
                                 "t.language='" + language + "'," +
                                 "t.privacy_type=" + privacy_type + "," +
+                                "t.activity_count=" + activity_count + "," +
                                 "t.type='"+ type_partup + "'," +
                                 "t.phase='" + phase + "'" +
-                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)," +
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)," +
                                 "(t)-[:PART_OF]->(n)," +
                                 "(t)-[:LOCATED_IN]->(ci)," +
                                 "(ci)-[:LOCATED_IN]->(co)";
@@ -178,7 +186,7 @@ public class Main {
                                 "t.privacy_type=" + privacy_type + "," +
                                 "t.type='"+ type_partup + "'," +
                                 "t.phase='" + phase + "'" +
-                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
                         graphDb.execute(user_query);
                     }
                 } else{
@@ -191,7 +199,7 @@ public class Main {
                             "t.privacy_type=" + privacy_type + "," +
                             "t.type='"+ type_partup + "'," +
                             "t.phase='" + phase + "'" +
-                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
                     graphDb.execute(user_query);
                 }
             } else {
@@ -214,7 +222,7 @@ public class Main {
                                 "t.privacy_type=" + privacy_type + "," +
                                 "t.type='"+ type_partup + "'," +
                                 "t.phase='" + phase + "'" +
-                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)," +
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)," +
                                 "(t)-[:LOCATED_IN]->(ci)," +
                                 "(ci)-[:LOCATED_IN]->(co)";
                         graphDb.execute(user_query);
@@ -228,7 +236,7 @@ public class Main {
                                 "t.privacy_type=" + privacy_type + "," +
                                 "t.type='"+ type_partup + "'," +
                                 "t.phase='" + phase + "'" +
-                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                                "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
                         graphDb.execute(user_query);
                     }
                 } else{
@@ -241,7 +249,7 @@ public class Main {
                             "t.privacy_type=" + privacy_type + "," +
                             "t.type='"+ type_partup + "'," +
                             "t.phase='" + phase + "'" +
-                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
                     graphDb.execute(user_query);
                 }
             }
@@ -250,7 +258,7 @@ public class Main {
                 if (!partners.get(i).equals(creator_id)){
                     String query = "MERGE (u:User {_id: '" + partners.get(i) + "'})" +
                             "MERGE (t:Team {_id:'" + _id + "'})" +
-                            "CREATE UNIQUE (u)-[:PARTNER_IN {comments:0, contributions:0, pageViews:0, ratings:[]}]->(t)";
+                            "CREATE UNIQUE (u)-[:PARTNER_IN {comments:0, contributions:0, pageViews:0, ratings:[], weight:1}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -259,7 +267,7 @@ public class Main {
                 for (int i = 0; i < supporters.size(); i++) {
                     String query = "MERGE (u:User {_id: '" + supporters.get(i) + "'})" +
                             "MERGE (t:Team {_id:'" + _id + "'})" +
-                            "CREATE UNIQUE (u)-[:SUPPORTER_IN {comments:0, pageViews:0}]->(t)";
+                            "CREATE UNIQUE (u)-[:SUPPORTER_IN {comments:0, pageViews:0, weight:0.5}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -279,6 +287,8 @@ public class Main {
         int count_comments = 0;
         for (Document comment : comments) {
             String type = (String) comment.get("type");
+            String _id = (String) comment.get("_id");
+            System.out.println(_id);
             if (type.equals("partups_message_added") || type.equals("partups_activities_comments_added") || type.equals("partups_contributions_comments_added")){
                 String upper_id = (String) comment.get("upper_id");
                 String partup_id = (String) comment.get("partup_id");
@@ -286,6 +296,24 @@ public class Main {
                         "SET r.comments=r.comments+1";
                 graphDb.execute(query);
                 count_comments = count_comments + 1;
+            }
+            int comments_count = (int) comment.get("comments_count");
+            if (comments_count > 0){
+                List repliesList = (List) comment.get("comments");
+                for (int i = 0; i < repliesList.size(); i++) {
+                    Document reply = (Document) repliesList.get(i);
+                    String reply_type = (String) reply.get("type");
+                    Boolean reply_system = (Boolean) reply.get("system");
+                    if (reply_type==null && reply_system==null){
+                        Document reply_creator = (Document) reply.get("creator");
+                        String reply_upper_id = (String) reply_creator.get("_id");
+                        String reply_partup_id = (String) comment.get("partup_id");
+                        String query_reply = "MATCH (u:User {_id: '" + reply_upper_id + "'})-[r]->(t:Team {_id: '" + reply_partup_id + "'})" +
+                                "SET r.comments=r.comments+1";
+                        graphDb.execute(query_reply);
+                        count_comments = count_comments + 1;
+                    }
+                }
             }
         }
         System.out.println(count_comments + " comments imported into Neo4j.");
