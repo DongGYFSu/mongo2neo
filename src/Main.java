@@ -44,7 +44,7 @@ public class Main {
                             "u.language='" + language + "'," +
                             "u.tags=[]" +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci)," +
-                            "(ci)-[:LIVES_IN]->(co)";
+                            "(ci)-[:LOCATED_IN]->(co)";
                     graphDb.execute(user_query);
                 } else {
                     String user_query = "MERGE (u:User {_id:'" + _id + "'})" +
@@ -144,9 +144,8 @@ public class Main {
             String phase = (String) partup.get("phase");
             Integer activity_count = (Integer) partup.get("activity_count");
             Date end_date_raw = (Date) partup.get("end_date");
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
-            String end_date = formatter.format(end_date_raw);
-//            Date
+            SimpleDateFormat date_format = new SimpleDateFormat("yyyyMMdd");
+            String end_date = date_format.format(end_date_raw);
             String network_id = (String) partup.get("network_id");
             if (network_id != null) {
                 Document location = (Document) partup.get("location");
@@ -163,7 +162,7 @@ public class Main {
                                 "MERGE (u:User {_id: '" + creator_id + "'})" +
                                 "MERGE (t:Team {_id:'" + _id + "'})" +
                                 "SET t.name='" + name + "'," +
-                                "t.end_date='" + end_date + "'," +
+                                "t.end_date=" + end_date + "," +
                                 "t.tags=[]," +
                                 "t.purpose='"+ purpose +"'," +
                                 "t.language='" + language + "'," +
@@ -180,6 +179,7 @@ public class Main {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
                                 "MERGE (t:Team {_id:'" + _id + "'})" +
                                 "SET t.name='" + name + "'," +
+                                "t.end_date=" + end_date + "," +
                                 "t.tags=[]," +
                                 "t.purpose='"+ purpose +"'," +
                                 "t.language='" + language + "'," +
@@ -193,6 +193,7 @@ public class Main {
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
                             "MERGE (t:Team {_id:'" + _id + "'})" +
                             "SET t.name='" + name + "'," +
+                            "t.end_date=" + end_date + "," +
                             "t.tags=[]," +
                             "t.purpose='"+ purpose +"'," +
                             "t.language='" + language + "'," +
@@ -216,6 +217,7 @@ public class Main {
                                 "MERGE (u:User {_id: '" + creator_id + "'})" +
                                 "MERGE (t:Team {_id:'" + _id + "'})" +
                                 "SET t.name='" + name + "'," +
+                                "t.end_date=" + end_date + "," +
                                 "t.tags=[]," +
                                 "t.purpose='"+ purpose +"'," +
                                 "t.language='" + language + "'," +
@@ -230,6 +232,7 @@ public class Main {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
                                 "MERGE (t:Team {_id:'" + _id + "'})" +
                                 "SET t.name='" + name + "'," +
+                                "t.end_date=" + end_date + "," +
                                 "t.tags=[]," +
                                 "t.purpose='"+ purpose +"'," +
                                 "t.language='" + language + "'," +
@@ -243,6 +246,7 @@ public class Main {
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'})" +
                             "MERGE (t:Team {_id:'" + _id + "'})" +
                             "SET t.name='" + name + "'," +
+                            "t.end_date=" + end_date + "," +
                             "t.tags=[]," +
                             "t.purpose='"+ purpose +"'," +
                             "t.language='" + language + "'," +
@@ -279,6 +283,14 @@ public class Main {
                     graphDb.execute(query);
                 }
             }
+            Date deleted_at_raw = (Date) partup.get("deleted_at");
+            if (deleted_at_raw!=null){
+                String deleted_at = date_format.format(deleted_at_raw);
+                String query = "MERGE (t:Team {_id: '" + _id + "'})" +
+                        "SET t.deleted_at=" + deleted_at + "," +
+                        "t.active=false";
+                graphDb.execute(query);
+            }
         }
         System.out.println(partups.size() + " teams imported into Neo4j.");
 
@@ -288,7 +300,6 @@ public class Main {
         for (Document comment : comments) {
             String type = (String) comment.get("type");
             String _id = (String) comment.get("_id");
-            System.out.println(_id);
             if (type.equals("partups_message_added") || type.equals("partups_activities_comments_added") || type.equals("partups_contributions_comments_added")){
                 String upper_id = (String) comment.get("upper_id");
                 String partup_id = (String) comment.get("partup_id");
