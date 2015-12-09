@@ -271,7 +271,8 @@ public class Main {
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
-                                "t.phase='" + phase + "' " +
+                                "t.phase='" + phase + "', " +
+                                "t.active=true " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
                         graphDb.execute(user_query);
                     }
@@ -390,6 +391,13 @@ public class Main {
             graphDb.execute(query);
         }
         System.out.println(ratings.size() + " ratings imported into Neo4j.");
+
+        graphDb.execute("CREATE CONSTRAINT ON (u:User) ASSERT u._id IS UNIQUE");
+        graphDb.execute("CREATE CONSTRAINT ON (n:Network) ASSERT n._id IS UNIQUE");
+        graphDb.execute("CREATE CONSTRAINT ON (t:Team) ASSERT t._id IS UNIQUE");
+        graphDb.execute("CREATE CONSTRAINT ON (ci:City) ASSERT ci._id IS UNIQUE");
+        graphDb.execute("CREATE CONSTRAINT ON (co:Country) ASSERT co.name IS UNIQUE");
+        System.out.println("Contraints for User, Network, Team, City and Country nodes created in Neo4j");
 
         System.out.println("Happy Hunting!");
     }
