@@ -200,7 +200,7 @@ public class Main {
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t), " +
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t), " +
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
@@ -217,7 +217,7 @@ public class Main {
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                         graphDb.execute(user_query);
                     }
                 } else{
@@ -232,7 +232,7 @@ public class Main {
                             "t.type='"+ type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.active=true " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                     graphDb.execute(user_query);
                 }
             } else {
@@ -257,7 +257,7 @@ public class Main {
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t), " +
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
                         graphDb.execute(user_query);
@@ -273,7 +273,7 @@ public class Main {
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                         graphDb.execute(user_query);
                     }
                 } else{
@@ -288,7 +288,7 @@ public class Main {
                             "t.type='"+ type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.active=true " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, ratings:[], weight:1.5}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                     graphDb.execute(user_query);
                 }
             }
@@ -297,7 +297,7 @@ public class Main {
                 if (!partners.get(i).equals(creator_id)){
                     String query = "MERGE (u:User {_id: '" + partners.get(i) + "'}) " +
                             "MERGE (t:Team {_id:'" + _id + "'}) " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, ratings:[], weight:1}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:1.5}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -306,7 +306,7 @@ public class Main {
                 for (int i = 0; i < supporters.size(); i++) {
                     String query = "MERGE (u:User {_id: '" + supporters.get(i) + "'}) " +
                             "MERGE (t:Team {_id:'" + _id + "'}) " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, pageViews:0, weight:0.5}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, weight:1.0}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -392,12 +392,49 @@ public class Main {
         }
         System.out.println(ratings.size() + " ratings imported into Neo4j.");
 
-        graphDb.execute("CREATE CONSTRAINT ON (u:User) ASSERT u._id IS UNIQUE");
-        graphDb.execute("CREATE CONSTRAINT ON (n:Network) ASSERT n._id IS UNIQUE");
-        graphDb.execute("CREATE CONSTRAINT ON (t:Team) ASSERT t._id IS UNIQUE");
-        graphDb.execute("CREATE CONSTRAINT ON (ci:City) ASSERT ci._id IS UNIQUE");
-        graphDb.execute("CREATE CONSTRAINT ON (co:Country) ASSERT co.name IS UNIQUE");
-        System.out.println("Contraints for User, Network, Team, City and Country nodes created in Neo4j");
+        //Set Max
+        for (Document user : users) {
+            String _id = (String) user.get("_id");
+            String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
+                    "WITH MAX(r.contributions) as maxContributions " +
+                    "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
+                    "WHERE r.contributions=maxContributions " +
+                    "SET u.maxContributions = toFloat(r.contributions) " +
+                    "RETURN u " +
+                    "UNION " +
+                    "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
+                    "WITH MAX(r.comments) as maxComments " +
+                    "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
+                    "WHERE r.comments=maxComments " +
+                    "SET u.maxComments = toFloat(r.comments) " +
+                    "RETURN u";
+            graphDb.execute(query);
+        }
+
+        //Score
+        for (Document user : users) {
+            String _id = (String) user.get("_id");
+            String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
+                    "SET r.participation=r.weight+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0)";
+            graphDb.execute(query);
+        }
+
+        //Similarity
+        String query = "MATCH (t1:Team)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2:Team) " +
+                "WITH SUM(r1.participation * r2.participation) as xyDotProduct, " +
+                "SQRT(REDUCE(xDot=0, i IN COLLECT(r1.participation) | xDot + toInt(i^2))) as xLength, " +
+                "SQRT(REDUCE(yDot=0, j IN COLLECT(r2.participation) | yDot + toInt(j^2))) as yLength, " +
+                "t1, t2 " +
+                "MERGE (t1)-[s:SIMILARITY]-(t2) " +
+                "SET s.sim=xyDotProduct / (xLength * yLength)";
+        graphDb.execute(query);
+
+        graphDb.execute("CREATE INDEX ON :User(_id)");
+        graphDb.execute("CREATE INDEX ON :Network(_id)");
+        graphDb.execute("CREATE INDEX ON :Team(_id)");
+        graphDb.execute("CREATE INDEX ON :City(_id)");
+        graphDb.execute("CREATE INDEX ON :Country(name)");
+        System.out.println("Indexes for User, Network, Team, City and Country nodes created in Neo4j");
 
         System.out.println("Happy Hunting!");
     }
