@@ -306,7 +306,7 @@ public class Main {
                 for (int i = 0; i < supporters.size(); i++) {
                     String query = "MERGE (u:User {_id: '" + supporters.get(i) + "'}) " +
                             "MERGE (t:Team {_id:'" + _id + "'}) " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, weight:1.0}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:1.0}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -415,18 +415,21 @@ public class Main {
         for (Document user : users) {
             String _id = (String) user.get("_id");
             String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "SET r.participation=r.weight+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0)";
+                    "WITH r.weight+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0) AS part, " +
+                    "r.ratings AS ratings, " +
+                    "r " +
+                    "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
             graphDb.execute(query);
         }
 
         //Similarity
         String query = "MATCH (t1:Team)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2:Team) " +
                 "WITH SUM(r1.participation * r2.participation) as xyDotProduct, " +
-                "SQRT(REDUCE(xDot=0, i IN COLLECT(r1.participation) | xDot + toInt(i^2))) as xLength, " +
-                "SQRT(REDUCE(yDot=0, j IN COLLECT(r2.participation) | yDot + toInt(j^2))) as yLength, " +
+                "SQRT(REDUCE(xDot=0.0, i IN COLLECT(r1.participation) | xDot + toFloat(i^2))) as xLength, " +
+                "SQRT(REDUCE(yDot=0.0, j IN COLLECT(r2.participation) | yDot + toFloat(j^2))) as yLength, " +
                 "t1, t2 " +
                 "MERGE (t1)-[s:SIMILARITY]-(t2) " +
-                "SET s.sim=xyDotProduct / (xLength * yLength)";
+                "SET s.sim=(xyDotProduct / (xLength * yLength))";
         graphDb.execute(query);
 
         graphDb.execute("CREATE INDEX ON :User(_id)");
