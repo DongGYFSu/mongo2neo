@@ -167,7 +167,6 @@ public class Main {
             String name_raw = (String) partup.get("name");
             String name = name_raw.replace("'", "");
             String creator_id = (String) partup.get("creator_id");
-            String purpose = (String) partup.get("purpose");
             String language = (String) partup.get("language");
             int privacy_type = (int) partup.get("privacy_type");
             String type_partup = (String) partup.get("type");
@@ -193,7 +192,6 @@ public class Main {
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
-                                "t.purpose='"+ purpose +"', " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
@@ -212,7 +210,6 @@ public class Main {
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
-                                "t.purpose='"+ purpose +"', " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
@@ -229,7 +226,6 @@ public class Main {
                             "SET t.name='" + name + "', " +
                             "t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
-                            "t.purpose='"+ purpose +"', " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
                             "t.type='"+ type_partup + "', " +
@@ -256,7 +252,6 @@ public class Main {
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
-                                "t.purpose='"+ purpose +"', " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
@@ -274,7 +269,6 @@ public class Main {
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
-                                "t.purpose='"+ purpose +"', " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
@@ -291,7 +285,6 @@ public class Main {
                             "SET t.name='" + name + "', " +
                             "t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
-                            "t.purpose='"+ purpose +"', " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
                             "t.type='"+ type_partup + "', " +
@@ -418,7 +411,7 @@ public class Main {
                     "WITH MAX(r.comments) as maxComments " +
                     "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
                     "WHERE r.comments=maxComments " +
-                    "SET u.maxComments = toFloat(r.comments) " +
+                    "SET u.maxComments = toFloat(r.comments)" +
                     "RETURN u";
             graphDb.execute(query);
         }
