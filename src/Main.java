@@ -196,9 +196,10 @@ public class Main {
                                 "t.purpose='"+ purpose +"', " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
-                                "t.activity_count=" + activity_count + ", " +
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
+                                "t.activity_count=" + activity_count + ", " +
+                                "t.partners=1, " +
                                 "t.active=true " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t), " +
                                 "(t)-[:PART_OF]->(n), " +
@@ -216,6 +217,8 @@ public class Main {
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
+                                "t.activity_count=" + activity_count + ", " +
+                                "t.partners=1, " +
                                 "t.active=true " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                         graphDb.execute(user_query);
@@ -231,6 +234,8 @@ public class Main {
                             "t.privacy_type=" + privacy_type + ", " +
                             "t.type='"+ type_partup + "', " +
                             "t.phase='" + phase + "', " +
+                            "t.activity_count=" + activity_count + ", " +
+                            "t.partners=1, " +
                             "t.active=true " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                     graphDb.execute(user_query);
@@ -256,6 +261,8 @@ public class Main {
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
+                                "t.activity_count=" + activity_count + ", " +
+                                "t.partners=1, " +
                                 "t.active=true " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
@@ -272,6 +279,8 @@ public class Main {
                                 "t.privacy_type=" + privacy_type + ", " +
                                 "t.type='"+ type_partup + "', " +
                                 "t.phase='" + phase + "', " +
+                                "t.activity_count=" + activity_count + ", " +
+                                "t.partners=1, " +
                                 "t.active=true " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                         graphDb.execute(user_query);
@@ -287,6 +296,8 @@ public class Main {
                             "t.privacy_type=" + privacy_type + ", " +
                             "t.type='"+ type_partup + "', " +
                             "t.phase='" + phase + "', " +
+                            "t.activity_count=" + activity_count + ", " +
+                            "t.partners=1, " +
                             "t.active=true " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
                     graphDb.execute(user_query);
@@ -297,6 +308,7 @@ public class Main {
                 if (!partners.get(i).equals(creator_id)){
                     String query = "MERGE (u:User {_id: '" + partners.get(i) + "'}) " +
                             "MERGE (t:Team {_id:'" + _id + "'}) " +
+                            "SET t.partners=t.partners+1 " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:1.5}]->(t)";
                     graphDb.execute(query);
                 }
@@ -416,7 +428,6 @@ public class Main {
             String _id = (String) user.get("_id");
             String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
                     "WITH r.weight+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0) AS part, " +
-                    "r.ratings AS ratings, " +
                     "r " +
                     "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
             graphDb.execute(query);
