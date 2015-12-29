@@ -431,7 +431,9 @@ public class Main {
                 "WITH SUM(r1.participation * r2.participation) as xyDotProduct, " +
                 "SQRT(REDUCE(xDot=0.0, i IN COLLECT(r1.participation) | xDot + toFloat(i^2))) as xLength, " +
                 "SQRT(REDUCE(yDot=0.0, j IN COLLECT(r2.participation) | yDot + toFloat(j^2))) as yLength, " +
-                "t1, t2 " +
+                "t1, t2, " +
+                "COUNT(r1) AS r1_count, COUNT(r2) AS r2_count " +
+                "WHERE r1_count>3 AND r2_count>3 " +
                 "MERGE (t1)-[s:SIMILARITY]-(t2) " +
                 "SET s.sim=(xyDotProduct / (xLength * yLength))";
         graphDb.execute(query);
