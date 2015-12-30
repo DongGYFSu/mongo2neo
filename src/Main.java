@@ -14,7 +14,7 @@ public class Main {
     public static void main(String[] args) {
 
         MongoClient mongoClient = new MongoClient();
-        MongoDatabase MDB = (MongoDatabase) mongoClient.getDatabase("partup");
+        MongoDatabase MDB = mongoClient.getDatabase("partup");
 
         String DB_PATH = "data/graph.db";
         GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase( new File( DB_PATH ));
@@ -86,6 +86,31 @@ public class Main {
                         "SET u.deactivatedAt=" + deactivatedAt + ", " +
                         "u.active=false";
                 graphDb.execute(query);
+            }
+            Document meurs = (Document) profile.get("meurs");
+            if (meurs!=null){
+                Boolean fetched_results = (Boolean) meurs.get("fetched_results");
+                if (fetched_results!=null){
+                    List results = (List) meurs.get("results");
+                    Document results_0 = (Document) results.get(0);
+                    int code_0 = (int) results_0.get("code");
+                    String name_0 = (String) results_0.get("name");
+                    int score_0 = (int) results_0.get("score");
+                    Document results_1 = (Document) results.get(1);
+                    int code_1 = (int) results_1.get("code");
+                    String name_1 = (String) results_1.get("name");
+                    int score_1 = (int) results_1.get("score");
+                    String query = "MERGE (u:User {_id: '" + _id + "'}) " +
+                            "MERGE (s0:Strength {code: '" + code_0 + "'}) " +
+                            "ON CREATE SET s0.name= '" + name_0 + "' " +
+                            "MERGE (s1:Strength {code: '" + code_1 + "'}) " +
+                            "ON CREATE SET s1.name= '" + name_1 + "' " +
+                            "CREATE UNIQUE (u)-[r0:HOLDS]->(s0) " +
+                            "SET r0.score=" + score_0 + " " +
+                            "CREATE UNIQUE (u)-[r1:HOLDS]->(s1) " +
+                            "SET r1.score=" + score_1;
+                    graphDb.execute(query);
+                }
             }
         }
         System.out.println(users.size() + " users imported into Neo4j.");
