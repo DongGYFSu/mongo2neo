@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/MongoDBtoNeo4j.iml" filepath="$PROJECT_DIR$/MongoDBtoNeo4j.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mongo2neo.iml" filepath="$PROJECT_DIR$/mongo2neo.iml" />
     </modules>
   </component>
 </project>
