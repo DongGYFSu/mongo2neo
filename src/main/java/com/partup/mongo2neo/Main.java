@@ -31,7 +31,7 @@ public class Main {
         SimpleDateFormat date_format = new SimpleDateFormat("yyyyMMdd");
 
         //User
-        List<Document> users = MDB.getCollection("Users").find().into(new ArrayList<Document>());
+        List<Document> users = MDB.getCollection("users").find().into(new ArrayList<Document>());
         for (Document user : users) {
             String _id = user.getString("_id");
             Document profile = (Document) user.get("profile");
@@ -42,6 +42,8 @@ public class Main {
             String email = email_doc.getString("address");
             Document settings = (Document) profile.get("settings");
             String language = settings.getString("locale");
+            String website = (String) profile.get("website");
+            double participation_score = Double.valueOf(user.get("participation_score").toString()).intValue();
             Document location = (Document) profile.get("location");
             if (location!=null) {
                 String place_id = location.getString("place_id");
@@ -57,6 +59,8 @@ public class Main {
                             "u.email='" + email + "', " +
                             "u.language='" + language + "', " +
                             "u.tags=[], " +
+                            "u.website='" + website + "', " +
+                            "u.participation_score=" + participation_score + "," +
                             "u.active=true " +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
@@ -67,6 +71,8 @@ public class Main {
                             "u.email='" + email + "', " +
                             "u.language='" + language + "', " +
                             "u.tags=[], " +
+                            "u.website='" + website + "', " +
+                            "u.participation_score=" + participation_score + "," +
                             "u.active=true";
                     graphDb.execute(user_query);
                 }
@@ -76,6 +82,8 @@ public class Main {
                         "u.email='" + email + "', " +
                         "u.language='" + language + "', " +
                         "u.tags=[], " +
+                        "u.website='" + website + "', " +
+                        "u.participation_score=" + participation_score + "," +
                         "u.active=true";
                 graphDb.execute(user_query);
             }
@@ -124,7 +132,7 @@ public class Main {
         System.out.println(users.size() + " users imported into Neo4j.");
 
         //Networks
-        List<Document> networks = MDB.getCollection("Networks").find().into(new ArrayList<Document>());
+        List<Document> networks = MDB.getCollection("networks").find().into(new ArrayList<Document>());
         for (Document network : networks) {
             String _id = network.getString("_id");
             String name = network.getString("name");
@@ -194,7 +202,7 @@ public class Main {
         System.out.println(networks.size() + " networks imported into Neo4j.");
 
         //Teams
-        List<Document> partups = MDB.getCollection("Teams").find().into(new ArrayList<Document>());
+        List<Document> partups = MDB.getCollection("partups").find().into(new ArrayList<Document>());
         for (Document partup : partups) {
             String _id = partup.getString("_id");
             String name_raw = partup.getString("name");
@@ -232,7 +240,7 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t), " +
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
@@ -250,7 +258,7 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                         graphDb.execute(user_query);
                     }
                 } else{
@@ -266,7 +274,7 @@ public class Main {
                             "t.activity_count=" + activity_count + ", " +
                             "t.partners=1, " +
                             "t.active=true " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     graphDb.execute(user_query);
                 }
             } else {
@@ -292,7 +300,7 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t), " +
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
                         graphDb.execute(user_query);
@@ -309,7 +317,7 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                         graphDb.execute(user_query);
                     }
                 } else{
@@ -325,7 +333,7 @@ public class Main {
                             "t.activity_count=" + activity_count + ", " +
                             "t.partners=1, " +
                             "t.active=true " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:2.0}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     graphDb.execute(user_query);
                 }
             }
@@ -335,7 +343,7 @@ public class Main {
                     String query = "MERGE (u:User {_id: '" + partners.get(i) + "'}) " +
                             "MERGE (t:Team {_id:'" + _id + "'}) " +
                             "SET t.partners=t.partners+1 " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:1.5}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.5}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -344,7 +352,7 @@ public class Main {
                 for (int i = 0; i < supporters.size(); i++) {
                     String query = "MERGE (u:User {_id: '" + supporters.get(i) + "'}) " +
                             "MERGE (t:Team {_id:'" + _id + "'}) " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], weight:1.0}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.0}]->(t)";
                     graphDb.execute(query);
                 }
             }
@@ -368,7 +376,7 @@ public class Main {
         System.out.println(partups.size() + " teams imported into Neo4j.");
 
         //Comments
-        List<Document> comments = MDB.getCollection("Updates").find().into(new ArrayList<Document>());
+        List<Document> comments = MDB.getCollection("updates").find().into(new ArrayList<Document>());
         int count_comments = 0;
         for (Document comment : comments) {
             String type = comment.getString("type");
@@ -403,7 +411,7 @@ public class Main {
         System.out.println(count_comments + " comments imported into Neo4j.");
 
         //Contributions
-        List<Document> contributions = MDB.getCollection("Contributions").find().into(new ArrayList<Document>());
+        List<Document> contributions = MDB.getCollection("contributions").find().into(new ArrayList<Document>());
         int count_contributions = 0;
         for (Document contribution : contributions) {
             Boolean verified = contribution.getBoolean("verified");
@@ -419,7 +427,7 @@ public class Main {
         System.out.println(count_contributions + " contributions imported into Neo4j.");
 
         //Ratings
-        List<Document> ratings = MDB.getCollection("Ratings").find().into(new ArrayList<Document>());
+        List<Document> ratings = MDB.getCollection("ratings").find().into(new ArrayList<Document>());
         for (Document rating : ratings) {
             String rated_upper_id = rating.getString("rated_upper_id");
             String partup_id = rating.getString("partup_id");
@@ -453,14 +461,14 @@ public class Main {
         for (Document user : users) {
             String _id = user.getString("_id");
             String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "WITH r.weight+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0) AS part, " +
+                    "WITH r.role+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0) AS part, " +
                     "r " +
                     "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
             graphDb.execute(query);
         }
 
-        //Similarity
-        String query = "MATCH (t1:Team)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2:Team) " +
+        //Cosine-based similarity
+        String query = "MATCH (t1:Team)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2:Team) WHERE t1 <> t2 " +
                 "WITH SUM(r1.participation * r2.participation) as xyDotProduct, " +
                 "SQRT(REDUCE(xDot=0.0, i IN COLLECT(r1.participation) | xDot + toFloat(i^2))) as xLength, " +
                 "SQRT(REDUCE(yDot=0.0, j IN COLLECT(r2.participation) | yDot + toFloat(j^2))) as yLength, " +
@@ -468,7 +476,22 @@ public class Main {
                 "COUNT(r1) AS r1_count, COUNT(r2) AS r2_count " +
                 "WHERE r1_count>3 AND r2_count>3 " +
                 "MERGE (t1)-[s:SIMILARITY]-(t2) " +
-                "SET s.sim=(xyDotProduct / (xLength * yLength))";
+                "SET s.coefficient=(xyDotProduct / (xLength * yLength))";
+        //Correlation-based similarity
+//        String query = "MATCH (t1:Team), (t2:Team) WHERE t1 <> t2 " +
+//                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User) WITH 1.0*sum(r.participation)/count(r) AS t1_mean, t1, t2 " +
+//                "MATCH (t2)<-[r:ACTIVE_IN]-(u:User) WITH 1.0*sum(r.participation)/count(r) AS t2_mean, t1_mean, t1, t2 " +
+//                "MATCH (t1)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2) WITH sum((r1.participation-t1_mean)*(r2.participation-t2_mean)) AS num, sqrt(sum((r1.participation-t1_mean)^2) * sum((r2.participation-t2_mean)^2)) AS denom, t1, t2 " +
+//                "WHERE denom <>0 MERGE (t1)-[q:SIM]-(t2) " +
+//                "SET q.coefficient=(num/denom)";
+        //Jaccard similarity
+//        String query = "MATCH (t1:Team), (t2:Team) WHERE t1 <> t2\n" +
+//                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User)-[:ACTIVE_IN]->(t2) WHERE r.participation > 2 WITH t1, t2, count(u) as intersect\n" +
+//                "MATCH (t1)<-[r:ACTIVE_IN]-(rest1) WHERE r.participation > 2 WITH t1, t2, intersect, collect(DISTINCT rest1) AS coll1\n" +
+//                "MATCH (t2)<-[r:ACTIVE_IN]-(rest2) WHERE r.participation > 2 WITH t1, t2, collect(DISTINCT rest2) AS coll2, coll1, intersect\n" +
+//                "WITH t1, t2, intersect, coll1, coll2, length(coll1 + filter(x IN coll2 WHERE NOT x IN coll1)) as union\n" +
+//                "MERGE (t1)-[z:JAC]-(t2)\n" +
+//                "SET z.coefficient=(1.0*intersect/union)";
         graphDb.execute(query);
 
         graphDb.execute("CREATE INDEX ON :User(_id)");
@@ -477,7 +500,7 @@ public class Main {
         graphDb.execute("CREATE INDEX ON :City(_id)");
         graphDb.execute("CREATE INDEX ON :Country(name)");
         graphDb.execute("CREATE INDEX ON :Strength(code)");
-        System.out.println("Indexes for User, Network, Team, City and Country nodes created in Neo4j");
+        System.out.println("Indexes for User, Network, Team, City, Country and Strength nodes created in Neo4j");
 
         System.out.println("Happy Hunting!");
     }

@@ -1,4 +1,5 @@
 .idea/
 classes/
+lib/
 target/
 mongo2neo.iml
