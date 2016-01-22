@@ -438,25 +438,6 @@ public class Main {
         }
         System.out.println(ratings.size() + " ratings imported into Neo4j.");
 
-        //Set Max
-        for (Document user : users) {
-            String _id = user.getString("_id");
-            String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "WITH MAX(r.contributions) as maxContributions " +
-                    "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "WHERE r.contributions=maxContributions " +
-                    "SET u.maxContributions = toFloat(r.contributions) " +
-                    "RETURN u " +
-                    "UNION " +
-                    "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "WITH MAX(r.comments) as maxComments " +
-                    "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "WHERE r.comments=maxComments " +
-                    "SET u.maxComments = toFloat(r.comments)" +
-                    "RETURN u";
-            graphDb.execute(query);
-        }
-
         //Score
         for (Document user : users) {
             String _id = user.getString("_id");
