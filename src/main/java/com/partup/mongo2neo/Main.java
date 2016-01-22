@@ -460,38 +460,28 @@ public class Main {
         //Score
         for (Document user : users) {
             String _id = user.getString("_id");
-            String query = "MATCH (u:User {_id:'" + _id + "'})-[r:ACTIVE_IN]->(t:Team) " +
-                    "WITH r.role+(r.contributions/(toFloat(u.maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(u.maxComments)+0.00001)*1.0) AS part, " +
-                    "r " +
+            String query = "MATCH (u:User)-[r:ACTIVE_IN]->(t:Team)\n" +
+                    "WHERE u._id='" + _id + "'\n" +
+                    "WITH MAX(r.contributions) AS maxContributions, MAX(r.comments) AS maxComments, u\n" +
+                    "MATCH (u)-[r:ACTIVE_IN]->(t:Team)\n" +
+                    "WITH r.role+(r.contributions/(toFloat(maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(maxComments)+0.00001)*1.0) AS part, r\n" +
                     "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
             graphDb.execute(query);
         }
 
-        //Cosine-based similarity
-        String query = "MATCH (t1:Team)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2:Team) WHERE t1 <> t2 " +
-                "WITH SUM(r1.participation * r2.participation) as xyDotProduct, " +
-                "SQRT(REDUCE(xDot=0.0, i IN COLLECT(r1.participation) | xDot + toFloat(i^2))) as xLength, " +
-                "SQRT(REDUCE(yDot=0.0, j IN COLLECT(r2.participation) | yDot + toFloat(j^2))) as yLength, " +
-                "t1, t2, " +
-                "COUNT(r1) AS r1_count, COUNT(r2) AS r2_count " +
-                "WHERE r1_count>3 AND r2_count>3 " +
-                "MERGE (t1)-[s:SIMILARITY]-(t2) " +
-                "SET s.coefficient=(xyDotProduct / (xLength * yLength))";
-        //Correlation-based similarity
-//        String query = "MATCH (t1:Team), (t2:Team) WHERE t1 <> t2 " +
-//                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User) WITH 1.0*sum(r.participation)/count(r) AS t1_mean, t1, t2 " +
-//                "MATCH (t2)<-[r:ACTIVE_IN]-(u:User) WITH 1.0*sum(r.participation)/count(r) AS t2_mean, t1_mean, t1, t2 " +
-//                "MATCH (t1)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2) WITH sum((r1.participation-t1_mean)*(r2.participation-t2_mean)) AS num, sqrt(sum((r1.participation-t1_mean)^2) * sum((r2.participation-t2_mean)^2)) AS denom, t1, t2 " +
-//                "WHERE denom <>0 MERGE (t1)-[q:SIM]-(t2) " +
-//                "SET q.coefficient=(num/denom)";
-        //Jaccard similarity
-//        String query = "MATCH (t1:Team), (t2:Team) WHERE t1 <> t2\n" +
-//                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User)-[:ACTIVE_IN]->(t2) WHERE r.participation > 2 WITH t1, t2, count(u) as intersect\n" +
-//                "MATCH (t1)<-[r:ACTIVE_IN]-(rest1) WHERE r.participation > 2 WITH t1, t2, intersect, collect(DISTINCT rest1) AS coll1\n" +
-//                "MATCH (t2)<-[r:ACTIVE_IN]-(rest2) WHERE r.participation > 2 WITH t1, t2, collect(DISTINCT rest2) AS coll2, coll1, intersect\n" +
-//                "WITH t1, t2, intersect, coll1, coll2, length(coll1 + filter(x IN coll2 WHERE NOT x IN coll1)) as union\n" +
-//                "MERGE (t1)-[z:JAC]-(t2)\n" +
-//                "SET z.coefficient=(1.0*intersect/union)";
+        //Similarity
+        String query = "MATCH (t1:Team), (t2:Team)\n" +
+                "WHERE t1<>t2\n" +
+                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User)\n" +
+                "WITH toFloat(AVG(r.participation)) AS t1Mean, t1, t2\n" +
+                "MATCH (t2)<-[r:ACTIVE_IN]-(u:User)\n" +
+                "WITH toFloat(AVG(r.participation)) AS t2Mean, t1Mean, t1, t2\n" +
+                "MATCH (t1)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2)\n" +
+                "WITH SUM((r1.participation-t1Mean)*(r2.participation-t2Mean)) AS numerator," +
+                "SQRT(SUM((r1.participation-t1Mean)^2) * SUM((r2.participation-t2Mean)^2)) AS denominator, t1, t2\n" +
+                "WHERE denominator<>0\n" +
+                "MERGE (t1)-[q:SIMILARITY]-(t2)\n" +
+                "SET q.coefficient=(numerator/denominator)";
         graphDb.execute(query);
 
         graphDb.execute("CREATE INDEX ON :User(_id)");
