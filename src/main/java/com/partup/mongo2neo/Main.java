@@ -3,14 +3,19 @@ package com.partup.mongo2neo;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
-import java.io.File;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+
+import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import javax.ws.rs.core.MediaType;
+
 import org.bson.Document;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
  * MongoDB to Neo4j importer for Part-up data.
@@ -19,15 +24,33 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 public class Main {
 
+    private static final String SERVER_ROOT_URI = "http://localhost:7474/db/data/";
+
+    private static void sendQuery(String query) {
+
+        final String txUri = SERVER_ROOT_URI + "transaction/commit";
+        WebResource resource = Client.create().resource( txUri );
+
+        String payload = "{\"statements\" : [ {\"statement\" : \"" +query + "\"} ]}";
+        ClientResponse response = resource
+                .accept( MediaType.APPLICATION_JSON )
+                .type( PageAttributes.MediaType.APPLICATION_JSON )
+                .entity( payload )
+                .post( ClientResponse.class );
+
+        System.out.println( String.format(
+                "POST [%s] to [%s], status code [%d], returned data: "
+                        + System.lineSeparator() + "%s",
+                payload, txUri, response.getStatus(),
+                response.getEntity( String.class ) ) );
+
+        response.close();
+    }
+
     public static void main(String[] args) {
 
         MongoClient mongoClient = new MongoClient();
         MongoDatabase MDB = mongoClient.getDatabase("partup");
-
-        String DB_PATH = "data/graph.db";
-        GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File( DB_PATH ));
-
-        registerShutdownHook( graphDb );
 
         SimpleDateFormat date_format = new SimpleDateFormat("yyyyMMdd");
 
@@ -65,7 +88,7 @@ public class Main {
                             "u.active=true\n" +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci),\n" +
                             "(ci)-[:LOCATED_IN]->(co)";
-                    graphDb.execute(user_query);
+                    sendQuery(user_query);
                 } else {
                     String user_query = "MERGE (u:User {_id:'" + _id + "'})\n" +
                             "SET u.name='" + name + "',\n" +
@@ -75,7 +98,7 @@ public class Main {
                             "u.website='" + website + "',\n" +
                             "u.participation_score=" + participation_score + "," +
                             "u.active=true";
-                    graphDb.execute(user_query);
+                    sendQuery(user_query);
                 }
             } else{
                 String user_query = "MERGE (u:User {_id:'" + _id + "'})\n" +
@@ -86,14 +109,14 @@ public class Main {
                         "u.website='" + website + "',\n" +
                         "u.participation_score=" + participation_score + "," +
                         "u.active=true";
-                graphDb.execute(user_query);
+                sendQuery(user_query);
             }
             List tags = (List) profile.get("tags");
             if (tags!=null) {
                 for (int i = 0; i < tags.size(); i++) {
                     String query = "MERGE (u:User {_id: '" + _id + "'})\n" +
                             "SET u.tags=u.tags + ['" + tags.get(i) + "']";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             }
             Date deactivatedAt_raw = user.getDate("deactivatedAt");
@@ -102,7 +125,7 @@ public class Main {
                 String query = "MERGE (u:User {_id: '" + _id + "'})\n" +
                         "SET u.deactivatedAt=" + deactivatedAt + ",\n" +
                         "u.active=false";
-                graphDb.execute(query);
+                sendQuery(query);
             }
             Document meurs = (Document) profile.get("meurs");
             if (meurs!=null){
@@ -126,7 +149,7 @@ public class Main {
                             "SET r0.score=" + score_0 + "\n" +
                             "CREATE UNIQUE (u)-[r1:HOLDS]->(s1)\n" +
                             "SET r1.score=" + score_1;
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             }
         }
@@ -162,7 +185,7 @@ public class Main {
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n),\n" +
                             "(n)-[:LOCATED_IN]->(ci),\n" +
                             "(ci)-[:LOCATED_IN]->(co)";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 } else {
                     String query = "MERGE (u:User {_id: '" + admin_id + "'})\n" +
                             "MERGE (n:Network {_id:'" + _id + "'})\n" +
@@ -172,7 +195,7 @@ public class Main {
                             "n.slug='" + slug + "',\n" +
                             "n.language='" + language + "'\n" +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             } else {
                 String query = "MERGE (u:User {_id: '" + admin_id + "'})\n" +
@@ -183,7 +206,7 @@ public class Main {
                         "n.slug='" + slug + "',\n" +
                         "n.language='" + language + "'\n" +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
-                graphDb.execute(query);
+                sendQuery(query);
             }
             List uppers = (List) network.get("uppers");
             if (uppers!=null) {
@@ -192,7 +215,7 @@ public class Main {
                         String query = "MERGE (u:User {_id: '" + uppers.get(i) + "'})\n" +
                                 "MERGE (n:Network {_id:'" + _id + "'})\n" +
                                 "CREATE UNIQUE (u)-[:MEMBER_OF]->(n)";
-                        graphDb.execute(query);
+                        sendQuery(query);
                     }
                 }
             }
@@ -201,7 +224,7 @@ public class Main {
                 for (int i = 0; i < tags.size(); i++) {
                     String query = "MERGE (n:Network {_id: '" + _id + "'})\n" +
                             "SET n.tags=n.tags + ['" + tags.get(i) + "']";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             }
         }
@@ -259,7 +282,7 @@ public class Main {
                                 "(t)-[:PART_OF]->(n),\n" +
                                 "(t)-[:LOCATED_IN]->(ci),\n" +
                                 "(ci)-[:LOCATED_IN]->(co)";
-                        graphDb.execute(user_query);
+                        sendQuery(user_query);
                     } else {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'})\n" +
                                 "MERGE (t:Team {_id:'" + _id + "'})\n" +
@@ -277,7 +300,7 @@ public class Main {
                                 "t.days_active=" + days_active + ",\n" +
                                 "t.link='https://part-up.com/partups/" + slug + "'\n" +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                        graphDb.execute(user_query);
+                        sendQuery(user_query);
                     }
                 } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'})\n" +
@@ -296,7 +319,7 @@ public class Main {
                             "t.days_active=" + days_active + ",\n" +
                             "t.link='https://part-up.com/partups/" + slug + "'\n" +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                    graphDb.execute(user_query);
+                    sendQuery(user_query);
                 }
             } else {
                 Document location = (Document) partup.get("location");
@@ -327,7 +350,7 @@ public class Main {
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t),\n" +
                                 "(t)-[:LOCATED_IN]->(ci),\n" +
                                 "(ci)-[:LOCATED_IN]->(co)";
-                        graphDb.execute(user_query);
+                        sendQuery(user_query);
                     } else {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'})\n" +
                                 "MERGE (t:Team {_id:'" + _id + "'})\n" +
@@ -345,7 +368,7 @@ public class Main {
                                 "t.days_active=" + days_active + ",\n" +
                                 "t.link='https://part-up.com/partups/" + slug + "'\n" +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                        graphDb.execute(user_query);
+                        sendQuery(user_query);
                     }
                 } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'})\n" +
@@ -364,7 +387,7 @@ public class Main {
                             "t.days_active=" + days_active + ",\n" +
                             "t.link='https://part-up.com/partups/" + slug + "'\n" +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                    graphDb.execute(user_query);
+                    sendQuery(user_query);
                 }
             }
             List partners = (List) partup.get("uppers");
@@ -374,7 +397,7 @@ public class Main {
                             "MERGE (t:Team {_id:'" + _id + "'})\n" +
                             "SET t.partners=t.partners+1\n" +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.5}]->(t)";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             }
             List supporters = (List) partup.get("supporters");
@@ -383,7 +406,7 @@ public class Main {
                     String query = "MERGE (u:User {_id: '" + supporters.get(i) + "'})\n" +
                             "MERGE (t:Team {_id:'" + _id + "'})\n" +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.0}]->(t)";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             }
             List tags = (List) partup.get("tags");
@@ -391,7 +414,7 @@ public class Main {
                 for (int i = 0; i < tags.size(); i++) {
                     String query = "MERGE (t:Team {_id: '" + _id + "'})\n" +
                             "SET t.tags=t.tags + ['" + tags.get(i) + "']";
-                    graphDb.execute(query);
+                    sendQuery(query);
                 }
             }
             Date deleted_at_raw = partup.getDate("deleted_at");
@@ -401,7 +424,7 @@ public class Main {
                         "SET t.deleted_at=" + deleted_at + ",\n" +
                         "t.deleted=true,\n" +
                         "t.active=false";
-                graphDb.execute(query);
+                sendQuery(query);
             }
             Date archived_at_raw = partup.getDate("archived_at");
             if (archived_at_raw!=null){
@@ -410,7 +433,7 @@ public class Main {
                         "SET t.archived_at=" + archived_at + ",\n" +
                         "t.archived=true,\n" +
                         "t.active=false";
-                graphDb.execute(query);
+                sendQuery(query);
             }
         }
         System.out.println(partups.size() + " teams imported into Neo4j.");
@@ -426,7 +449,7 @@ public class Main {
                 String partup_id = comment.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'})" +
                         "SET r.comments=r.comments+1";
-                graphDb.execute(query);
+                sendQuery(query);
                 count_comments = count_comments + 1;
             }
             int comments_count = comment.getInteger("comments_count");
@@ -442,7 +465,7 @@ public class Main {
                         String reply_partup_id = comment.getString("partup_id");
                         String query_reply = "MATCH (u:User {_id: '" + reply_upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + reply_partup_id + "'})\n" +
                                 "SET r.comments=r.comments+1";
-                        graphDb.execute(query_reply);
+                        sendQuery(query_reply);
                         count_comments = count_comments + 1;
                     }
                 }
@@ -460,7 +483,7 @@ public class Main {
                 String partup_id = contribution.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'})\n" +
                         "SET r.contributions=r.contributions+1";
-                graphDb.execute(query);
+                sendQuery(query);
                 count_contributions = count_contributions + 1;
             }
         }
@@ -474,7 +497,7 @@ public class Main {
             int rating_value = rating.getInteger("rating");
             String query = "MATCH (u:User {_id: '" + rated_upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'})\n" +
                   "SET r.ratings=r.ratings+["+ rating_value + "]";
-            graphDb.execute(query);
+            sendQuery(query);
         }
         System.out.println(ratings.size() + " ratings imported into Neo4j.");
 
@@ -487,7 +510,7 @@ public class Main {
 //                    "MATCH (u)-[r:ACTIVE_IN]->(t:Team)\n" +
 //                    "WITH r.role+(r.contributions/(toFloat(maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(maxComments)+0.00001)*1.0) AS part, r\n" +
 //                    "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
-//            graphDb.execute(query);
+//            sendQuery(query);
 //        }
 
         //Similarity
@@ -503,31 +526,16 @@ public class Main {
 //                "WHERE denominator<>0 AND r1Count>2\n" +
 //                "MERGE (t1)-[q:SIMILARITY]-(t2)\n" +
 //                "SET q.coefficient=(numerator/denominator)";
-//        graphDb.execute(query);
+//        sendQuery(query);
 //
-        graphDb.execute("CREATE INDEX ON :User(_id)");
-        graphDb.execute("CREATE INDEX ON :Network(_id)");
-        graphDb.execute("CREATE INDEX ON :Team(_id)");
-        graphDb.execute("CREATE INDEX ON :City(_id)");
-        graphDb.execute("CREATE INDEX ON :Country(name)");
-        graphDb.execute("CREATE INDEX ON :Strength(code)");
+        sendQuery("CREATE INDEX ON :User(_id)");
+        sendQuery("CREATE INDEX ON :Network(_id)");
+        sendQuery("CREATE INDEX ON :Team(_id)");
+        sendQuery("CREATE INDEX ON :City(_id)");
+        sendQuery("CREATE INDEX ON :Country(name)");
+        sendQuery("CREATE INDEX ON :Strength(code)");
         System.out.println("Indexes for User, Network, Team, City, Country and Strength nodes created in Neo4j");
 
         System.out.println("Happy Hunting!");
-    }
-
-    private static void registerShutdownHook( final GraphDatabaseService graphDb )
-    {
-        // Registers a shutdown hook for the Neo4j instance so that it
-        // shuts down nicely when the VM exits (even if you "Ctrl-C" the
-        // running application).
-        Runtime.getRuntime().addShutdownHook( new Thread()
-        {
-            @Override
-            public void run()
-            {
-                graphDb.shutdown();
-            }
-        } );
     }
 }
