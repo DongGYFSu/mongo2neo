@@ -66,20 +66,20 @@ public class Main {
                 .entity( payload )
                 .post( ClientResponse.class );
 
-        if (response.getStatus() != 200) {
+//        if (response.getStatus() != 200) {
             System.out.println(String.format(
                     "POST [%s] to [%s], status code [%d], returned data: "
                             + System.getProperty("line.separator") + "%s",
                     payload, txUri, response.getStatus(),
                     response.getEntity(String.class)));
-        } else {}
+//        } else {}
 
         response.close();
 
         //Local
-        String DB_PATH = "data/graph.db";
-        GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File( DB_PATH ));
-        graphDb.execute(query);
+//        String DB_PATH = "data/graph.db";
+//        GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File( DB_PATH ));
+//        graphDb.execute(query);
     }
 
     public static void ImportQueries() {
