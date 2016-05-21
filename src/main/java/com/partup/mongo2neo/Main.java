@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.lang3.StringUtils;
+
 import org.bson.Document;
 
 import org.neo4j.graphdb.*;
@@ -37,27 +39,27 @@ public class Main {
 
     public static void main(String[] args) {
 
-        DatabaseAuthentication();
+//        DatabaseAuthentication();
         ImportQueries();
 
     }
 
-    public static void DatabaseAuthentication() {
-        WebResource resource = Client.create()
-                .resource( SERVER_ROOT_URI );
-//        resource.addFilter(new HTTPBasicAuthFilter(username, password));
-
-        ClientResponse response = resource.get( ClientResponse.class );
-
-        System.out.println( String.format( "GET on [%s], status code [%d]",
-                SERVER_ROOT_URI, response.getStatus() ) );
-        response.close();
-    }
+//    public static void DatabaseAuthentication() {
+//        WebResource resource = Client.create()
+//                .resource( SERVER_ROOT_URI );
+//        ClientResponse response = resource.get( ClientResponse.class );
+//
+//        System.out.println( String.format( "GET on [%s], status code [%d]",
+//                SERVER_ROOT_URI, response.getStatus() ) );
+//        response.close();
+//    }
 
     private static void sendQuery(String query) {
 
         final String txUri = SERVER_ROOT_URI + "transaction/commit";
-        WebResource resource = Client.create().resource( txUri );
+        Client c = Client.create();
+        c.addFilter(new HTTPBasicAuthFilter(username, password));
+        WebResource resource = c.resource( txUri );
 
         String payload = "{\"statements\" : [ {\"statement\" : \"" + query + "\"} ]}";
         ClientResponse response = resource
@@ -66,13 +68,11 @@ public class Main {
                 .entity( payload )
                 .post( ClientResponse.class );
 
-//        if (response.getStatus() != 200) {
-            System.out.println(String.format(
-                    "POST [%s] to [%s], status code [%d], returned data: "
-                            + System.getProperty("line.separator") + "%s",
-                    payload, txUri, response.getStatus(),
-                    response.getEntity(String.class)));
-//        } else {}
+        System.out.println(String.format(
+                "POST [%s] to [%s], status code [%d], returned data: "
+                        + System.getProperty("line.separator") + "%s",
+                payload, txUri, response.getStatus(),
+                response.getEntity(String.class)));
 
         response.close();
 
@@ -108,7 +108,7 @@ public class Main {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", "");
                     String country = location.getString("country");
-                    String user_query = "MERGE (ci:City {_id: '" + place_id + "'}) " +
+                    String user_query = "MERGE (ci:City {_id: '" + place_id + "'})  " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             "MERGE (u:User {_id:'" + _id + "'}) " +
@@ -123,7 +123,7 @@ public class Main {
                             "(ci)-[:LOCATED_IN]->(co)";
                     sendQuery(user_query);
                 } else {
-                    String user_query = "MERGE (u:User {_id:'" + _id + "'}) " +
+                    String user_query = "MERGE (u:User {_id:'" + _id + "'})  " +
                             "SET u.name='" + name + "', " +
                             "u.email='" + email + "', " +
                             "u.language='" + language + "', " +
@@ -134,7 +134,7 @@ public class Main {
                     sendQuery(user_query);
                 }
             } else{
-                String user_query = "MERGE (u:User {_id:'" + _id + "'}) " +
+                String user_query = "MERGE (u:User {_id:'" + _id + "'})  " +
                         "SET u.name='" + name + "', " +
                         "u.email='" + email + "', " +
                         "u.language='" + language + "', " +
@@ -243,14 +243,18 @@ public class Main {
             }
             List uppers = (List) network.get("uppers");
             if (uppers!=null) {
+                List<String> mergeUser = new ArrayList();
+                List<String> createUnique = new ArrayList();
+                String mergeNetwork = "MERGE (n:Network {_id:'" + _id + "'})";
                 for (int i = 0; i < uppers.size(); i++) {
                     if (uppers.get(i) != admin_id) {
-                        String query = "MERGE (u:User {_id: '" + uppers.get(i) + "'}) " +
-                                "MERGE (n:Network {_id:'" + _id + "'}) " +
-                                "CREATE UNIQUE (u)-[:MEMBER_OF]->(n)";
-                        sendQuery(query);
+                        mergeUser.add(String.format("MERGE (u%s:User {_id: '%s'})", i, uppers.get(i)));
+                        createUnique.add(String.format("CREATE UNIQUE (u%s)-[:MEMBER_OF]->(n)", i));
                     }
                 }
+
+                String query = StringUtils.join(mergeUser, " ") + " " + mergeNetwork + " " + StringUtils.join(createUnique, " ");
+                sendQuery(query);
             }
             List tags = (List) network.get("tags");
             if (tags!=null) {
