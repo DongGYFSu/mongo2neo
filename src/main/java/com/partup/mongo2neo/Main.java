@@ -82,6 +82,15 @@ public class Main {
 //        graphDb.execute(query);
     }
 
+    public static String ProcessTags(List tags) {
+        List<String> tagsList = new ArrayList();
+        for (int i = 0; i < tags.size(); i++) {
+            tagsList.add(tags.get(i).toString());
+        }
+        String tagsString = "'" + StringUtils.join(tagsList, "','") + "'";
+        return tagsString;
+    }
+
     public static void ImportQueries() {
 
         MongoClient mongoClient = new MongoClient();
@@ -145,12 +154,10 @@ public class Main {
                 sendQuery(user_query);
             }
             List tags = (List) profile.get("tags");
+            String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
             if (tags!=null) {
-                for (int i = 0; i < tags.size(); i++) {
-                    String query = "MERGE (u:User {_id: '" + _id + "'}) " +
-                            "SET u.tags=u.tags + ['" + tags.get(i) + "']";
-                    sendQuery(query);
-                }
+                String queryT = mergeUser + " SET u.tags=[" + ProcessTags(tags) + "]";
+                sendQuery(queryT);
             }
             Date deactivatedAt_raw = user.getDate("deactivatedAt");
             if (deactivatedAt_raw!=null){
@@ -242,12 +249,12 @@ public class Main {
                 sendQuery(query);
             }
             List uppers = (List) network.get("uppers");
+            String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
             if (uppers!=null) {
                 List<String> mergeUser = new ArrayList();
                 List<String> createUnique = new ArrayList();
-                String mergeNetwork = "MERGE (n:Network {_id:'" + _id + "'})";
                 for (int i = 0; i < uppers.size(); i++) {
-                    if (uppers.get(i) != admin_id) {
+                    if (!uppers.get(i).equals(admin_id)) {
                         mergeUser.add(String.format("MERGE (u%s:User {_id: '%s'})", i, uppers.get(i)));
                         createUnique.add(String.format("CREATE UNIQUE (u%s)-[:MEMBER_OF]->(n)", i));
                     }
@@ -258,11 +265,8 @@ public class Main {
             }
             List tags = (List) network.get("tags");
             if (tags!=null) {
-                for (int i = 0; i < tags.size(); i++) {
-                    String query = "MERGE (n:Network {_id: '" + _id + "'}) " +
-                            "SET n.tags=n.tags + ['" + tags.get(i) + "']";
-                    sendQuery(query);
-                }
+                String queryT = mergeNetwork + " SET n.tags=[" + ProcessTags(tags) + "]";
+                sendQuery(queryT);
             }
         }
         System.out.println(networks.size() + " networks imported into Neo4j.");
@@ -428,31 +432,35 @@ public class Main {
                 }
             }
             List partners = (List) partup.get("uppers");
+            List<String> mergePartner = new ArrayList();
+            List<String> createUniqueP = new ArrayList();
+            String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
             for (int i = 0; i < partners.size(); i++) {
-                if (!partners.get(i).equals(creator_id)){
-                    String query = "MERGE (u:User {_id: '" + partners.get(i) + "'}) " +
-                            "MERGE (t:Team {_id:'" + _id + "'}) " +
-                            "SET t.partners=t.partners+1 " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.5}]->(t)";
-                    sendQuery(query);
+                if (!partners.get(i).equals(creator_id)) {
+                    mergePartner.add(String.format("MERGE (u%s:User {_id: '%s'})", i, partners.get(i)));
+                    createUniqueP.add(String.format("CREATE UNIQUE (u%s)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.5}]->(t)", i));
                 }
             }
+            String queryP = StringUtils.join(mergePartner, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueP, " ");
+            sendQuery(queryP);
+
             List supporters = (List) partup.get("supporters");
             if (supporters!=null) {
+                List<String> mergeSupporter = new ArrayList();
+                List<String> createUniqueS = new ArrayList();
                 for (int i = 0; i < supporters.size(); i++) {
-                    String query = "MERGE (u:User {_id: '" + supporters.get(i) + "'}) " +
-                            "MERGE (t:Team {_id:'" + _id + "'}) " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:1.0}]->(t)";
-                    sendQuery(query);
+                    if (!supporters.get(i).equals(creator_id)) {
+                        mergeSupporter.add(String.format("MERGE (u%s:User {_id: '%s'})", i, supporters.get(i)));
+                        createUniqueS.add(String.format("CREATE UNIQUE (u%s)-[:ACTIVE_IN {comments:0, contributions:0, pageViews:0, participation:0.0, role:1.0}]->(t)", i));
+                    }
                 }
+                String queryS = StringUtils.join(mergeSupporter, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueS, " ");
+                sendQuery(queryS);
             }
             List tags = (List) partup.get("tags");
             if (tags!=null) {
-                for (int i = 0; i < tags.size(); i++) {
-                    String query = "MERGE (t:Team {_id: '" + _id + "'}) " +
-                            "SET t.tags=t.tags + ['" + tags.get(i) + "']";
-                    sendQuery(query);
-                }
+                String queryT = mergeTeam + " " + ProcessTags(tags);
+                sendQuery(queryT);
             }
             Date deleted_at_raw = partup.getDate("deleted_at");
             if (deleted_at_raw!=null){
