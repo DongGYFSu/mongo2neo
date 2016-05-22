@@ -33,34 +33,25 @@ public class Main {
 
     private static final String SERVER_ROOT_URI = "http://localhost:7474/db/data/";
     private static final String username = "neo4j";
-    private static final String password = "neo4j";
+    private static final String password = "partup";
+    private static final String txUri = SERVER_ROOT_URI + "transaction/commit";
 
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyyMMdd");
 
     public static void main(String[] args) {
 
-//        DatabaseAuthentication();
-        ImportQueries();
+        ImportQueries(connect());
 
     }
 
-//    public static void DatabaseAuthentication() {
-//        WebResource resource = Client.create()
-//                .resource( SERVER_ROOT_URI );
-//        ClientResponse response = resource.get( ClientResponse.class );
-//
-//        System.out.println( String.format( "GET on [%s], status code [%d]",
-//                SERVER_ROOT_URI, response.getStatus() ) );
-//        response.close();
-//    }
-
-    private static void sendQuery(String query) {
-
-        final String txUri = SERVER_ROOT_URI + "transaction/commit";
+    private static WebResource connect() {
         Client c = Client.create();
         c.addFilter(new HTTPBasicAuthFilter(username, password));
         WebResource resource = c.resource( txUri );
+        return resource;
+    }
 
+    private static void sendQuery(String query, WebResource resource) {
         String payload = "{\"statements\" : [ {\"statement\" : \"" + query + "\"} ]}";
         ClientResponse response = resource
                 .accept( MediaType.APPLICATION_JSON )
@@ -82,7 +73,7 @@ public class Main {
 //        graphDb.execute(query);
     }
 
-    public static String ProcessTags(List tags) {
+    private static String ProcessTags(List tags) {
         List<String> tagsList = new ArrayList();
         for (int i = 0; i < tags.size(); i++) {
             tagsList.add(tags.get(i).toString());
@@ -91,7 +82,7 @@ public class Main {
         return tagsString;
     }
 
-    public static void ImportQueries() {
+    private static void ImportQueries(WebResource resource) {
 
         MongoClient mongoClient = new MongoClient();
         MongoDatabase MDB = mongoClient.getDatabase("partup");
@@ -100,6 +91,7 @@ public class Main {
         List<Document> users = MDB.getCollection("users").find().into(new ArrayList<Document>());
         for (Document user : users) {
             String _id = user.getString("_id");
+            String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
             Document profile = (Document) user.get("profile");
             String name_raw = profile.getString("name");
             String name = name_raw.replace("'", "");
@@ -120,7 +112,7 @@ public class Main {
                     String user_query = "MERGE (ci:City {_id: '" + place_id + "'})  " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
-                            "MERGE (u:User {_id:'" + _id + "'}) " +
+                            mergeUser + " " +
                             "SET u.name='" + name + "', " +
                             "u.email='" + email + "', " +
                             "u.language='" + language + "', " +
@@ -130,9 +122,9 @@ public class Main {
                             "u.active=true " +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
-                    sendQuery(user_query);
+                    sendQuery(user_query, resource);
                 } else {
-                    String user_query = "MERGE (u:User {_id:'" + _id + "'})  " +
+                    String user_query = mergeUser + " " +
                             "SET u.name='" + name + "', " +
                             "u.email='" + email + "', " +
                             "u.language='" + language + "', " +
@@ -140,10 +132,10 @@ public class Main {
                             "u.website='" + website + "', " +
                             "u.participation_score=" + participation_score + ", " +
                             "u.active=true";
-                    sendQuery(user_query);
+                    sendQuery(user_query, resource);
                 }
             } else{
-                String user_query = "MERGE (u:User {_id:'" + _id + "'})  " +
+                String user_query = mergeUser + " " +
                         "SET u.name='" + name + "', " +
                         "u.email='" + email + "', " +
                         "u.language='" + language + "', " +
@@ -151,13 +143,12 @@ public class Main {
                         "u.website='" + website + "', " +
                         "u.participation_score=" + participation_score + ", " +
                         "u.active=true";
-                sendQuery(user_query);
+                sendQuery(user_query, resource);
             }
             List tags = (List) profile.get("tags");
-            String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
             if (tags!=null) {
                 String queryT = mergeUser + " SET u.tags=[" + ProcessTags(tags) + "]";
-                sendQuery(queryT);
+                sendQuery(queryT, resource);
             }
             Date deactivatedAt_raw = user.getDate("deactivatedAt");
             if (deactivatedAt_raw!=null){
@@ -165,7 +156,7 @@ public class Main {
                 String query = "MERGE (u:User {_id: '" + _id + "'}) " +
                         "SET u.deactivatedAt=" + deactivatedAt + ", " +
                         "u.active=false";
-                sendQuery(query);
+                sendQuery(query, resource);
             }
             Document meurs = (Document) profile.get("meurs");
             if (meurs!=null){
@@ -189,16 +180,17 @@ public class Main {
                             "SET r0.score=" + score_0 + " " +
                             "CREATE UNIQUE (u)-[r1:HOLDS]->(s1) " +
                             "SET r1.score=" + score_1;
-                    sendQuery(query);
+                    sendQuery(query, resource);
                 }
             }
         }
         System.out.println(users.size() + " users imported into Neo4j.");
 
         //Networks
-        List<Document> networks = MDB.getCollection("networks").find().into(new ArrayList<Document>());
+        List<Document> networks = MDB.getCollection("networks").find().into(new ArrayList());
         for (Document network : networks) {
             String _id = network.getString("_id");
+            String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
             String name_raw = network.getString("name");
             String name = name_raw.replace("'", "");
             int privacy_type = network.getInteger("privacy_type");
@@ -212,11 +204,11 @@ public class Main {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", " '");
                     String country = location.getString("country");
-                    String query = "MERGE (ci:City {_id: '" + place_id + "'}) " +
+                    String query = mergeNetwork + " " +
+                            "MERGE (ci:City {name: '" + place_id + "'}) " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                            "MERGE (n:Network {_id:'" + _id + "'}) " +
                             "SET n.name='" + name + "', " +
                             "n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
@@ -225,31 +217,30 @@ public class Main {
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n), " +
                             "(n)-[:LOCATED_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
-                    sendQuery(query);
+                    sendQuery(query, resource);
                 } else {
-                    String query = "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                            "MERGE (n:Network {_id:'" + _id + "'}) " +
+                    String query = mergeNetwork + " " +
+                            "MERGE (u:User {_id: '" + admin_id + "'}) " +
                             "SET n.name='" + name + "', " +
                             "n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
                             "n.slug='" + slug + "', " +
                             "n.language='" + language + "' " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
-                    sendQuery(query);
+                    sendQuery(query, resource);
                 }
             } else {
                 String query = "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                        "MERGE (n:Network {_id:'" + _id + "'}) " +
+                        mergeNetwork + " " +
                         "SET n.name='" + name + "', " +
                         "n.tags=[], " +
                         "n.privacy_type=" + privacy_type + ", " +
                         "n.slug='" + slug + "', " +
                         "n.language='" + language + "' " +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
-                sendQuery(query);
+                sendQuery(query, resource);
             }
             List uppers = (List) network.get("uppers");
-            String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
             if (uppers!=null) {
                 List<String> mergeUser = new ArrayList();
                 List<String> createUnique = new ArrayList();
@@ -261,20 +252,21 @@ public class Main {
                 }
 
                 String query = StringUtils.join(mergeUser, " ") + " " + mergeNetwork + " " + StringUtils.join(createUnique, " ");
-                sendQuery(query);
+                sendQuery(query, resource);
             }
             List tags = (List) network.get("tags");
             if (tags!=null) {
                 String queryT = mergeNetwork + " SET n.tags=[" + ProcessTags(tags) + "]";
-                sendQuery(queryT);
+                sendQuery(queryT, resource);
             }
         }
         System.out.println(networks.size() + " networks imported into Neo4j.");
 
         //Teams
-        List<Document> partups = MDB.getCollection("partups").find().into(new ArrayList<Document>());
+        List<Document> partups = MDB.getCollection("partups").find().into(new ArrayList());
         for (Document partup : partups) {
             String _id = partup.getString("_id");
+            String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
             String name_raw = partup.getString("name");
             String name = name_raw.replace("'", "");
             String creator_id = partup.getString("creator_id");
@@ -305,7 +297,7 @@ public class Main {
                                 "MERGE (co:Country {name: '" + country + "'}) " +
                                 "MERGE (n:Network {_id: '" + network_id + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
-                                "MERGE (t:Team {_id:'" + _id + "'}) " +
+                                mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
@@ -323,10 +315,10 @@ public class Main {
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
-                        sendQuery(user_query);
+                        sendQuery(user_query, resource);
                     } else {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
-                                "MERGE (t:Team {_id:'" + _id + "'}) " +
+                                mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
@@ -341,11 +333,11 @@ public class Main {
                                 "t.days_active=" + days_active + ", " +
                                 "t.link='https://part-up.com/partups/" + slug + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                        sendQuery(user_query);
+                        sendQuery(user_query, resource);
                     }
                 } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
-                            "MERGE (t:Team {_id:'" + _id + "'}) " +
+                            mergeTeam + " " +
                             "SET t.name='" + name + "', " +
                             "t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
@@ -360,7 +352,7 @@ public class Main {
                             "t.days_active=" + days_active + ", " +
                             "t.link='https://part-up.com/partups/" + slug + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                    sendQuery(user_query);
+                    sendQuery(user_query, resource);
                 }
             } else {
                 Document location = (Document) partup.get("location");
@@ -374,7 +366,7 @@ public class Main {
                                 "ON CREATE SET ci.name= '" + city + "' " +
                                 "MERGE (co:Country {name: '" + country + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
-                                "MERGE (t:Team {_id:'" + _id + "'}) " +
+                                mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
@@ -391,10 +383,10 @@ public class Main {
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
-                        sendQuery(user_query);
+                        sendQuery(user_query, resource);
                     } else {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
-                                "MERGE (t:Team {_id:'" + _id + "'}) " +
+                                mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
                                 "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
@@ -409,11 +401,11 @@ public class Main {
                                 "t.days_active=" + days_active + ", " +
                                 "t.link='https://part-up.com/partups/" + slug + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                        sendQuery(user_query);
+                        sendQuery(user_query, resource);
                     }
                 } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
-                            "MERGE (t:Team {_id:'" + _id + "'}) " +
+                            mergeTeam + " " +
                             "SET t.name='" + name + "', " +
                             "t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
@@ -428,13 +420,12 @@ public class Main {
                             "t.days_active=" + days_active + ", " +
                             "t.link='https://part-up.com/partups/" + slug + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                    sendQuery(user_query);
+                    sendQuery(user_query, resource);
                 }
             }
             List partners = (List) partup.get("uppers");
             List<String> mergePartner = new ArrayList();
             List<String> createUniqueP = new ArrayList();
-            String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
             for (int i = 0; i < partners.size(); i++) {
                 if (!partners.get(i).equals(creator_id)) {
                     mergePartner.add(String.format("MERGE (u%s:User {_id: '%s'})", i, partners.get(i)));
@@ -442,7 +433,7 @@ public class Main {
                 }
             }
             String queryP = StringUtils.join(mergePartner, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueP, " ");
-            sendQuery(queryP);
+            sendQuery(queryP, resource);
 
             List supporters = (List) partup.get("supporters");
             if (supporters!=null) {
@@ -455,12 +446,12 @@ public class Main {
                     }
                 }
                 String queryS = StringUtils.join(mergeSupporter, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueS, " ");
-                sendQuery(queryS);
+                sendQuery(queryS, resource);
             }
             List tags = (List) partup.get("tags");
             if (tags!=null) {
-                String queryT = mergeTeam + " " + ProcessTags(tags);
-                sendQuery(queryT);
+                String queryT = mergeTeam + " SET t.tags=[" + ProcessTags(tags) + "]";
+                sendQuery(queryT, resource);
             }
             Date deleted_at_raw = partup.getDate("deleted_at");
             if (deleted_at_raw!=null){
@@ -469,7 +460,7 @@ public class Main {
                         "SET t.deleted_at=" + deleted_at + ", " +
                         "t.deleted=true, " +
                         "t.active=false";
-                sendQuery(query);
+                sendQuery(query, resource);
             }
             Date archived_at_raw = partup.getDate("archived_at");
             if (archived_at_raw!=null){
@@ -478,7 +469,7 @@ public class Main {
                         "SET t.archived_at=" + archived_at + ", " +
                         "t.archived=true, " +
                         "t.active=false";
-                sendQuery(query);
+                sendQuery(query, resource);
             }
         }
         System.out.println(partups.size() + " teams imported into Neo4j.");
@@ -494,7 +485,7 @@ public class Main {
                 String partup_id = comment.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'})" +
                         "SET r.comments=r.comments+1";
-                sendQuery(query);
+                sendQuery(query, resource);
                 count_comments = count_comments + 1;
             }
             int comments_count = comment.getInteger("comments_count");
@@ -510,7 +501,7 @@ public class Main {
                         String reply_partup_id = comment.getString("partup_id");
                         String query_reply = "MATCH (u:User {_id: '" + reply_upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + reply_partup_id + "'}) " +
                                 "SET r.comments=r.comments+1";
-                        sendQuery(query_reply);
+                        sendQuery(query_reply, resource);
                         count_comments = count_comments + 1;
                     }
                 }
@@ -528,7 +519,7 @@ public class Main {
                 String partup_id = contribution.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'}) " +
                         "SET r.contributions=r.contributions+1";
-                sendQuery(query);
+                sendQuery(query, resource);
                 count_contributions = count_contributions + 1;
             }
         }
@@ -542,7 +533,7 @@ public class Main {
             int rating_value = rating.getInteger("rating");
             String query = "MATCH (u:User {_id: '" + rated_upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'}) " +
                   "SET r.ratings=r.ratings+["+ rating_value + "]";
-            sendQuery(query);
+            sendQuery(query, resource);
         }
         System.out.println(ratings.size() + " ratings imported into Neo4j.");
 
@@ -555,7 +546,7 @@ public class Main {
 //                    "MATCH (u)-[r:ACTIVE_IN]->(t:Team) " +
 //                    "WITH r.role+(r.contributions/(toFloat(maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(maxComments)+0.00001)*1.0) AS part, r " +
 //                    "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
-//            sendQuery(query);
+//            sendQuery(query, resource);
 //        }
 
         //Similarity
@@ -571,14 +562,14 @@ public class Main {
 //                "WHERE denominator<>0 AND r1Count>2 " +
 //                "MERGE (t1)-[q:SIMILARITY]-(t2) " +
 //                "SET q.coefficient=(numerator/denominator)";
-//        sendQuery(query);
+//        sendQuery(query, resource);
 //
-        sendQuery("CREATE INDEX ON :User(_id)");
-        sendQuery("CREATE INDEX ON :Network(_id)");
-        sendQuery("CREATE INDEX ON :Team(_id)");
-        sendQuery("CREATE INDEX ON :City(_id)");
-        sendQuery("CREATE INDEX ON :Country(name)");
-        sendQuery("CREATE INDEX ON :Strength(code)");
+        sendQuery("CREATE INDEX ON :User(_id)", resource);
+        sendQuery("CREATE INDEX ON :Network(_id)", resource);
+        sendQuery("CREATE INDEX ON :Team(_id)", resource);
+        sendQuery("CREATE INDEX ON :City(_id)", resource);
+        sendQuery("CREATE INDEX ON :Country(name)", resource);
+        sendQuery("CREATE INDEX ON :Strength(code)", resource);
         System.out.println("Indexes for User, Network, Team, City, Country and Strength nodes created in Neo4j");
 
         System.out.println("Happy Hunting!");
