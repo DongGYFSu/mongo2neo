@@ -93,15 +93,8 @@ public class Main {
             String _id = user.getString("_id");
             String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
             Document profile = (Document) user.get("profile");
-            String name_raw = profile.getString("name");
-            String name = name_raw.replace("'", "");
-            List email_list = (List) user.get("emails");
-            Document email_doc = (Document) email_list.get(0);
-            String email = email_doc.getString("address");
             Document settings = (Document) profile.get("settings");
             String language = settings.getString("locale");
-            String website = (String) profile.get("website");
-            double participation_score = Double.valueOf(user.get("participation_score").toString()).intValue();
             Document location = (Document) profile.get("location");
             if (location!=null) {
                 String place_id = location.getString("place_id");
@@ -113,35 +106,23 @@ public class Main {
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             mergeUser + " " +
-                            "SET u.name='" + name + "', " +
-                            "u.email='" + email + "', " +
-                            "u.language='" + language + "', " +
+                            "SET u.language='" + language + "', " +
                             "u.tags=[], " +
-                            "u.website='" + website + "', " +
-                            "u.participation_score=" + participation_score + ", " +
                             "u.active=true " +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
                     sendQuery(user_query, resource);
                 } else {
                     String user_query = mergeUser + " " +
-                            "SET u.name='" + name + "', " +
-                            "u.email='" + email + "', " +
-                            "u.language='" + language + "', " +
+                            "SET u.language='" + language + "', " +
                             "u.tags=[], " +
-                            "u.website='" + website + "', " +
-                            "u.participation_score=" + participation_score + ", " +
                             "u.active=true";
                     sendQuery(user_query, resource);
                 }
             } else{
                 String user_query = mergeUser + " " +
-                        "SET u.name='" + name + "', " +
-                        "u.email='" + email + "', " +
-                        "u.language='" + language + "', " +
+                        "SET u.language='" + language + "', " +
                         "u.tags=[], " +
-                        "u.website='" + website + "', " +
-                        "u.participation_score=" + participation_score + ", " +
                         "u.active=true";
                 sendQuery(user_query, resource);
             }
@@ -191,28 +172,24 @@ public class Main {
         for (Document network : networks) {
             String _id = network.getString("_id");
             String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
-            String name_raw = network.getString("name");
-            String name = name_raw.replace("'", "");
             int privacy_type = network.getInteger("privacy_type");
-            String slug = network.getString("slug");
-            String admin_id = network.getString("admin_id");
+            List<String> adminList = (List<String>) network.get("admins");
+            String admin_id = adminList.get(0);
             String language = network.getString("language");
             Document location = (Document) network.get("location");
             if (location!=null) {
                 String place_id = location.getString("place_id");
                 if (place_id!=null) {
                     String city_raw = location.getString("city");
-                    String city = city_raw.replace("'", " '");
+                    String city = city_raw.replace("'", "");
                     String country = location.getString("country");
                     String query = mergeNetwork + " " +
                             "MERGE (ci:City {name: '" + place_id + "'}) " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                            "SET n.name='" + name + "', " +
-                            "n.tags=[], " +
+                            "SET n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
-                            "n.slug='" + slug + "', " +
                             "n.language='" + language + "' " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n), " +
                             "(n)-[:LOCATED_IN]->(ci), " +
@@ -221,10 +198,8 @@ public class Main {
                 } else {
                     String query = mergeNetwork + " " +
                             "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                            "SET n.name='" + name + "', " +
-                            "n.tags=[], " +
+                            "SET n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
-                            "n.slug='" + slug + "', " +
                             "n.language='" + language + "' " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
                     sendQuery(query, resource);
@@ -232,10 +207,8 @@ public class Main {
             } else {
                 String query = "MERGE (u:User {_id: '" + admin_id + "'}) " +
                         mergeNetwork + " " +
-                        "SET n.name='" + name + "', " +
-                        "n.tags=[], " +
+                        "SET n.tags=[], " +
                         "n.privacy_type=" + privacy_type + ", " +
-                        "n.slug='" + slug + "', " +
                         "n.language='" + language + "' " +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
                 sendQuery(query, resource);
@@ -267,8 +240,6 @@ public class Main {
         for (Document partup : partups) {
             String _id = partup.getString("_id");
             String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
-            String name_raw = partup.getString("name");
-            String name = name_raw.replace("'", "");
             String creator_id = partup.getString("creator_id");
             String language = partup.getString("language");
             int privacy_type = partup.getInteger("privacy_type");
@@ -278,12 +249,8 @@ public class Main {
             Date end_date_raw = partup.getDate("end_date");
             String end_date = date_format.format(end_date_raw);
             String network_id = partup.getString("network_id");
-            String slug = partup.getString("slug");
-            Date current_date_raw = new Date();
             Date created_at_raw = partup.getDate("created_at");
             String created_at = date_format.format(created_at_raw);
-            long diff = current_date_raw.getTime() - created_at_raw.getTime();
-            long days_active = TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS);
             if (network_id!=null) {
                 Document location = (Document) partup.get("location");
                 if (location!=null) {
@@ -298,8 +265,7 @@ public class Main {
                                 "MERGE (n:Network {_id: '" + network_id + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "SET t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -309,8 +275,6 @@ public class Main {
                                 "t.partners=1, " +
                                 "t.active=true, " +
                                 "t.created_at=" + created_at + ", " +
-                                "t.days_active=" + days_active + ", " +
-                                "t.link='https://part-up.com/partups/" + slug + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
@@ -319,8 +283,7 @@ public class Main {
                     } else {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "SET t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -330,16 +293,13 @@ public class Main {
                                 "t.partners=1, " +
                                 "t.active=true, " +
                                 "t.created_at=" + created_at + ", " +
-                                "t.days_active=" + days_active + ", " +
-                                "t.link='https://part-up.com/partups/" + slug + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                         sendQuery(user_query, resource);
                     }
                 } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
-                            "SET t.name='" + name + "', " +
-                            "t.end_date=" + end_date + ", " +
+                            "SET t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
@@ -349,8 +309,6 @@ public class Main {
                             "t.partners=1, " +
                             "t.active=true, " +
                             "t.created_at=" + created_at + ", " +
-                            "t.days_active=" + days_active + ", " +
-                            "t.link='https://part-up.com/partups/" + slug + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     sendQuery(user_query, resource);
                 }
@@ -367,8 +325,7 @@ public class Main {
                                 "MERGE (co:Country {name: '" + country + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "SET t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -378,8 +335,6 @@ public class Main {
                                 "t.partners=1, " +
                                 "t.active=true, " +
                                 "t.created_at=" + created_at + ", " +
-                                "t.days_active=" + days_active + ", " +
-                                "t.link='https://part-up.com/partups/" + slug + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
@@ -387,8 +342,7 @@ public class Main {
                     } else {
                         String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "SET t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -398,16 +352,13 @@ public class Main {
                                 "t.partners=1, " +
                                 "t.active=true, " +
                                 "t.created_at=" + created_at + ", " +
-                                "t.days_active=" + days_active + ", " +
-                                "t.link='https://part-up.com/partups/" + slug + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                         sendQuery(user_query, resource);
                     }
                 } else{
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
-                            "SET t.name='" + name + "', " +
-                            "t.end_date=" + end_date + ", " +
+                            "SET t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
@@ -417,8 +368,6 @@ public class Main {
                             "t.partners=1, " +
                             "t.active=true, " +
                             "t.created_at=" + created_at + ", " +
-                            "t.days_active=" + days_active + ", " +
-                            "t.link='https://part-up.com/partups/" + slug + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     sendQuery(user_query, resource);
                 }
