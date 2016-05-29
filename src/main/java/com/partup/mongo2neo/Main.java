@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import org.bson.Document;
 
+import org.neo4j.cypher.internal.compiler.v2_2.perty.Doc;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
@@ -38,37 +39,51 @@ public class Main {
 
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyyMMdd");
 
+    private static List<Document> usersDocuments;
+    private static List<Document> networksDocuments;
+    private static List<Document> teamsDocuments;
+    private static List<Document> commentsDocuments;
+    private static List<Document> contributionsDocuments;
+    private static List<Document> ratingsDocuments;
+
+    private static WebResource resource;
+
     public static void main(String[] args) {
 
+        MongoConnect();
+        NeoConnect();
+
+        ImportUsers();
+        ImportNetworks();
+        ImportTeams();
+        ImportComments();
+        ImportContributions();
+        ImportRatings();
+
+        SetScores();
+        SetSimilarities();
+        CreateIndexes();
+
+    }
+
+    public static void MongoConnect() {
         MongoClient mongoClient = new MongoClient();
         MongoDatabase MDB = mongoClient.getDatabase("partup");
-        List<Document> users = MDB.getCollection("users").find().into(new ArrayList<Document>());
-        List<Document> networks = MDB.getCollection("networks").find().into(new ArrayList());
-        List<Document> partups = MDB.getCollection("partups").find().into(new ArrayList());
-        List<Document> comments = MDB.getCollection("updates").find().into(new ArrayList<Document>());
-        List<Document> contributions = MDB.getCollection("contributions").find().into(new ArrayList<Document>());
-        List<Document> ratings = MDB.getCollection("ratings").find().into(new ArrayList<Document>());
-
-        ImportUsers(connect(), users);
-        ImportNetworks(connect(), networks);
-        ImportTeams(connect(), partups);
-        ImportComments(connect(), comments);
-        ImportContributions(connect(), contributions);
-        ImportRatings(connect(), ratings);
-        SetScores(connect(), users);
-        SetSimilarities(connect());
-        CreateIndexes(connect());
-
+        usersDocuments = MDB.getCollection("users").find().into(new ArrayList<Document>());
+        networksDocuments = MDB.getCollection("networks").find().into(new ArrayList());
+        teamsDocuments = MDB.getCollection("partups").find().into(new ArrayList());
+        commentsDocuments = MDB.getCollection("updates").find().into(new ArrayList<Document>());
+        contributionsDocuments = MDB.getCollection("contributions").find().into(new ArrayList<Document>());
+        ratingsDocuments = MDB.getCollection("ratings").find().into(new ArrayList<Document>());
     }
 
-    private static final WebResource connect() {
+    public static void NeoConnect() {
         Client c = Client.create();
         c.addFilter(new HTTPBasicAuthFilter(username, password));
-        final WebResource resource = c.resource( txUri );
-        return resource;
+        resource = c.resource( txUri );
     }
 
-    private static void sendQuery(String query, WebResource resource) {
+    private static void sendQuery(String query) {
         String payload = "{\"statements\" : [ {\"statement\" : \"" + query + "\"} ]}";
         ClientResponse response = resource
                 .accept( MediaType.APPLICATION_JSON )
@@ -99,11 +114,11 @@ public class Main {
         return tagsString;
     }
 
-    private static void ImportUsers(WebResource resource, List<Document> users) {
+    private static void ImportUsers() {
 
         String userQuery;
 
-        for (Document user : users) {
+        for (Document user : usersDocuments) {
             String _id = user.getString("_id");
             String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
             Document profile = (Document) user.get("profile");
@@ -137,12 +152,12 @@ public class Main {
                         "u.tags=[], " +
                         "u.active=true";
             }
-            sendQuery(userQuery, resource);
+            sendQuery(userQuery);
 
             List tags = (List) profile.get("tags");
             if (tags != null) {
                 String queryT = mergeUser + " SET u.tags=[" + ProcessTags(tags) + "]";
-                sendQuery(queryT, resource);
+                sendQuery(queryT);
             }
             Date deactivatedAt_raw = user.getDate("deactivatedAt");
             if (deactivatedAt_raw != null) {
@@ -150,7 +165,7 @@ public class Main {
                 String query = "MERGE (u:User {_id: '" + _id + "'}) " +
                         "SET u.deactivatedAt=" + deactivatedAt + ", " +
                         "u.active=false";
-                sendQuery(query, resource);
+                sendQuery(query);
             }
             Document meurs = (Document) profile.get("meurs");
             if (meurs != null) {
@@ -174,18 +189,18 @@ public class Main {
                             "SET r0.score=" + score_0 + " " +
                             "CREATE UNIQUE (u)-[r1:HOLDS]->(s1) " +
                             "SET r1.score=" + score_1;
-                    sendQuery(query, resource);
+                    sendQuery(query);
                 }
             }
         }
-        System.out.println(users.size() + " users imported into Neo4j.");
+        System.out.println(usersDocuments.size() + " users imported into Neo4j.");
 
     }
-    private static void ImportNetworks(WebResource resource, List<Document> networks) {
+    private static void ImportNetworks() {
 
         String networkQuery;
 
-        for (Document network : networks) {
+        for (Document network : networksDocuments) {
             String _id = network.getString("_id");
             String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
             int privacy_type = network.getInteger("privacy_type");
@@ -226,7 +241,7 @@ public class Main {
                         "n.language='" + language + "' " +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
             }
-            sendQuery(networkQuery, resource);
+            sendQuery(networkQuery);
 
             List uppers = (List) network.get("uppers");
             if (uppers != null) {
@@ -240,23 +255,23 @@ public class Main {
                 }
 
                 String query = StringUtils.join(mergeUser, " ") + " " + mergeNetwork + " " + StringUtils.join(createUnique, " ");
-                sendQuery(query, resource);
+                sendQuery(query);
             }
 
             List tags = (List) network.get("tags");
             if (tags != null) {
                 String queryT = mergeNetwork + " SET n.tags=[" + ProcessTags(tags) + "]";
-                sendQuery(queryT, resource);
+                sendQuery(queryT);
             }
         }
-        System.out.println(networks.size() + " networks imported into Neo4j.");
+        System.out.println(networksDocuments.size() + " networks imported into Neo4j.");
 
     }
-    private static void ImportTeams(WebResource resource, List<Document> partups) {
+    private static void ImportTeams() {
 
         String teamQuery;
 
-        for (Document partup : partups) {
+        for (Document partup : teamsDocuments) {
             String _id = partup.getString("_id");
             String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
             String creator_id = partup.getString("creator_id");
@@ -385,7 +400,7 @@ public class Main {
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                 }
             }
-            sendQuery(teamQuery, resource);
+            sendQuery(teamQuery);
 
             List partners = (List) partup.get("uppers");
             List<String> mergePartner = new ArrayList();
@@ -397,7 +412,7 @@ public class Main {
                 }
             }
             String queryP = StringUtils.join(mergePartner, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueP, " ");
-            sendQuery(queryP, resource);
+            sendQuery(queryP);
 
             List supporters = (List) partup.get("supporters");
             if (supporters != null) {
@@ -410,12 +425,12 @@ public class Main {
                     }
                 }
                 String queryS = StringUtils.join(mergeSupporter, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueS, " ");
-                sendQuery(queryS, resource);
+                sendQuery(queryS);
             }
             List tags = (List) partup.get("tags");
             if (tags != null) {
                 String queryT = mergeTeam + " SET t.tags=[" + ProcessTags(tags) + "]";
-                sendQuery(queryT, resource);
+                sendQuery(queryT);
             }
             
             Date deleted_at_raw = partup.getDate("deleted_at");
@@ -425,7 +440,7 @@ public class Main {
                         "SET t.deleted_at=" + deleted_at + ", " +
                         "t.deleted=true, " +
                         "t.active=false";
-                sendQuery(query, resource);
+                sendQuery(query);
             }
             
             Date archived_at_raw = partup.getDate("archived_at");
@@ -435,16 +450,16 @@ public class Main {
                         "SET t.archived_at=" + archived_at + ", " +
                         "t.archived=true, " +
                         "t.active=false";
-                sendQuery(query, resource);
+                sendQuery(query);
             }
         }
-        System.out.println(partups.size() + " teams imported into Neo4j.");
+        System.out.println(teamsDocuments.size() + " teams imported into Neo4j.");
 
     }
-    private static void ImportComments(WebResource resource, List<Document> comments) {
+    private static void ImportComments() {
 
         int count_comments = 0;
-        for (Document comment : comments) {
+        for (Document comment : commentsDocuments) {
             String type = comment.getString("type");
             String _id = comment.getString("_id");
             if (type.equals("partups_message_added") || type.equals("partups_activities_comments_added") || type.equals("partups_contributions_comments_added")) {
@@ -452,7 +467,7 @@ public class Main {
                 String partup_id = comment.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'})" +
                         "SET r.comments=r.comments+1";
-                sendQuery(query, resource);
+                sendQuery(query);
                 count_comments = count_comments + 1;
             }
             int comments_count = comment.getInteger("comments_count");
@@ -468,7 +483,7 @@ public class Main {
                         String reply_partup_id = comment.getString("partup_id");
                         String query_reply = "MATCH (u:User {_id: '" + reply_upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + reply_partup_id + "'}) " +
                                 "SET r.comments=r.comments+1";
-                        sendQuery(query_reply, resource);
+                        sendQuery(query_reply);
                         count_comments = count_comments + 1;
                     }
                 }
@@ -477,41 +492,41 @@ public class Main {
         System.out.println(count_comments + " comments imported into Neo4j.");
 
     }
-    private static void ImportContributions(WebResource resource, List<Document> contributions) {
+    private static void ImportContributions() {
 
         int count_contributions = 0;
-        for (Document contribution : contributions) {
+        for (Document contribution : contributionsDocuments) {
             Boolean verified = contribution.getBoolean("verified");
             if (verified) {
                 String upper_id = contribution.getString("upper_id");
                 String partup_id = contribution.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'}) " +
                         "SET r.contributions=r.contributions+1";
-                sendQuery(query, resource);
+                sendQuery(query);
                 count_contributions = count_contributions + 1;
             }
         }
         System.out.println(count_contributions + " contributions imported into Neo4j.");
 
     }
-    private static void ImportRatings(WebResource resource, List<Document> ratings) {
+    private static void ImportRatings() {
 
         //Ratings
 
-        for (Document rating : ratings) {
+        for (Document rating : ratingsDocuments) {
             String rated_upper_id = rating.getString("rated_upper_id");
             String partup_id = rating.getString("partup_id");
             int rating_value = rating.getInteger("rating");
             String query = "MATCH (u:User {_id: '" + rated_upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'}) " +
                   "SET r.ratings=r.ratings+["+ rating_value + "]";
-            sendQuery(query, resource);
+            sendQuery(query);
         }
-        System.out.println(ratings.size() + " ratings imported into Neo4j.");
+        System.out.println(ratingsDocuments.size() + " ratings imported into Neo4j.");
 
     }
-    private static void SetScores(WebResource resource, List<Document> users) {
+    private static void SetScores() {
 
-        for (Document user : users) {
+        for (Document user : usersDocuments) {
             String _id = user.getString("_id");
             String query = "MATCH (u:User)-[r:ACTIVE_IN]->(t:Team) " +
                     "WHERE u._id='" + _id + "' " +
@@ -519,11 +534,11 @@ public class Main {
                     "MATCH (u)-[r:ACTIVE_IN]->(t:Team) " +
                     "WITH r.role+(r.contributions/(toFloat(maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(maxComments)+0.00001)*1.0) AS part, r " +
                     "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
-            sendQuery(query, resource);
+            sendQuery(query);
         }
 
     }
-    private static void SetSimilarities(WebResource resource) {
+    private static void SetSimilarities() {
 
         String query = "MATCH (t1:Team), (t2:Team) " +
                 "WHERE t1<>t2 " +
@@ -537,17 +552,17 @@ public class Main {
                 "WHERE denominator<>0 AND r1Count>2 " +
                 "MERGE (t1)-[q:SIMILARITY]-(t2) " +
                 "SET q.coefficient=(numerator/denominator)";
-        sendQuery(query, resource);
+        sendQuery(query);
 
     }
-    private static void CreateIndexes(WebResource resource) {
+    private static void CreateIndexes() {
 
-        sendQuery("CREATE INDEX ON :User(_id)", resource);
-        sendQuery("CREATE INDEX ON :Network(_id)", resource);
-        sendQuery("CREATE INDEX ON :Team(_id)", resource);
-        sendQuery("CREATE INDEX ON :City(_id)", resource);
-        sendQuery("CREATE INDEX ON :Country(name)", resource);
-        sendQuery("CREATE INDEX ON :Strength(code)", resource);
+        sendQuery("CREATE INDEX ON :User(_id)");
+        sendQuery("CREATE INDEX ON :Network(_id)");
+        sendQuery("CREATE INDEX ON :Team(_id)");
+        sendQuery("CREATE INDEX ON :City(_id)");
+        sendQuery("CREATE INDEX ON :Country(name)");
+        sendQuery("CREATE INDEX ON :Strength(code)");
         System.out.println("Indexes for User, Network, Team, City, Country and Strength nodes created in Neo4j");
 
         System.out.println("Happy Hunting!");
