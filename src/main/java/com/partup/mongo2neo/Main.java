@@ -61,10 +61,10 @@ public class Main {
 
     }
 
-    private static WebResource connect() {
+    private static final WebResource connect() {
         Client c = Client.create();
         c.addFilter(new HTTPBasicAuthFilter(username, password));
-        WebResource resource = c.resource( txUri );
+        final WebResource resource = c.resource( txUri );
         return resource;
     }
 
@@ -101,6 +101,8 @@ public class Main {
 
     private static void ImportUsers(WebResource resource, List<Document> users) {
 
+        String userQuery;
+
         for (Document user : users) {
             String _id = user.getString("_id");
             String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
@@ -114,7 +116,7 @@ public class Main {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", "");
                     String country = location.getString("country");
-                    String user_query = "MERGE (ci:City {_id: '" + place_id + "'})  " +
+                    userQuery = "MERGE (ci:City {_id: '" + place_id + "'})  " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             mergeUser + " " +
@@ -123,21 +125,20 @@ public class Main {
                             "u.active=true " +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
-                    sendQuery(user_query, resource);
                 } else {
-                    String user_query = mergeUser + " " +
+                    userQuery = mergeUser + " " +
                             "SET u.language='" + language + "', " +
                             "u.tags=[], " +
                             "u.active=true";
-                    sendQuery(user_query, resource);
                 }
             } else {
-                String user_query = mergeUser + " " +
+                userQuery = mergeUser + " " +
                         "SET u.language='" + language + "', " +
                         "u.tags=[], " +
                         "u.active=true";
-                sendQuery(user_query, resource);
             }
+            sendQuery(userQuery, resource);
+
             List tags = (List) profile.get("tags");
             if (tags != null) {
                 String queryT = mergeUser + " SET u.tags=[" + ProcessTags(tags) + "]";
@@ -182,6 +183,8 @@ public class Main {
     }
     private static void ImportNetworks(WebResource resource, List<Document> networks) {
 
+        String networkQuery;
+
         for (Document network : networks) {
             String _id = network.getString("_id");
             String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
@@ -196,7 +199,7 @@ public class Main {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", "");
                     String country = location.getString("country");
-                    String query = mergeNetwork + " " +
+                    networkQuery = mergeNetwork + " " +
                             "MERGE (ci:City {name: '" + place_id + "'}) " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
@@ -207,25 +210,24 @@ public class Main {
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n), " +
                             "(n)-[:LOCATED_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
-                    sendQuery(query, resource);
                 } else {
-                    String query = mergeNetwork + " " +
+                    networkQuery = mergeNetwork + " " +
                             "MERGE (u:User {_id: '" + admin_id + "'}) " +
                             "SET n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
                             "n.language='" + language + "' " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
-                    sendQuery(query, resource);
                 }
             } else {
-                String query = "MERGE (u:User {_id: '" + admin_id + "'}) " +
+                networkQuery = "MERGE (u:User {_id: '" + admin_id + "'}) " +
                         mergeNetwork + " " +
                         "SET n.tags=[], " +
                         "n.privacy_type=" + privacy_type + ", " +
                         "n.language='" + language + "' " +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
-                sendQuery(query, resource);
             }
+            sendQuery(networkQuery, resource);
+
             List uppers = (List) network.get("uppers");
             if (uppers != null) {
                 List<String> mergeUser = new ArrayList();
@@ -240,6 +242,7 @@ public class Main {
                 String query = StringUtils.join(mergeUser, " ") + " " + mergeNetwork + " " + StringUtils.join(createUnique, " ");
                 sendQuery(query, resource);
             }
+
             List tags = (List) network.get("tags");
             if (tags != null) {
                 String queryT = mergeNetwork + " SET n.tags=[" + ProcessTags(tags) + "]";
@@ -250,6 +253,8 @@ public class Main {
 
     }
     private static void ImportTeams(WebResource resource, List<Document> partups) {
+
+        String teamQuery;
 
         for (Document partup : partups) {
             String _id = partup.getString("_id");
@@ -273,7 +278,7 @@ public class Main {
                         String city_raw = location.getString("city");
                         String city = city_raw.replace("'", "");
                         String country = location.getString("country");
-                        String user_query = "MERGE (ci:City {_id: '" + place_id + "'}) " +
+                        teamQuery = "MERGE (ci:City {_id: '" + place_id + "'}) " +
                                 "ON CREATE SET ci.name= '" + city + "' " +
                                 "MERGE (co:Country {name: '" + country + "'}) " +
                                 "MERGE (n:Network {_id: '" + network_id + "'}) " +
@@ -293,9 +298,8 @@ public class Main {
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
-                        sendQuery(user_query, resource);
                     } else {
-                        String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
+                        teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
@@ -308,10 +312,9 @@ public class Main {
                                 "t.active=true, " +
                                 "t.created_at=" + created_at + " " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                        sendQuery(user_query, resource);
                     }
                 } else {
-                    String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
+                    teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
@@ -324,7 +327,6 @@ public class Main {
                             "t.active=true, " +
                             "t.created_at=" + created_at + " " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                    sendQuery(user_query, resource);
                 }
             } else {
                 Document location = (Document) partup.get("location");
@@ -334,7 +336,7 @@ public class Main {
                         String city_raw = location.getString("city");
                         String city = city_raw.replace("'", "");
                         String country = location.getString("country");
-                        String user_query = "MERGE (ci:City {_id: '" + place_id + "'}) " +
+                        teamQuery = "MERGE (ci:City {_id: '" + place_id + "'}) " +
                                 "ON CREATE SET ci.name= '" + city + "' " +
                                 "MERGE (co:Country {name: '" + country + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
@@ -352,9 +354,8 @@ public class Main {
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
-                        sendQuery(user_query, resource);
                     } else {
-                        String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
+                        teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
@@ -367,10 +368,9 @@ public class Main {
                                 "t.active=true, " +
                                 "t.created_at=" + created_at + " " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                        sendQuery(user_query, resource);
                     }
                 } else {
-                    String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
+                    teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
@@ -383,9 +383,10 @@ public class Main {
                             "t.active=true, " +
                             "t.created_at=" + created_at + " " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
-                    sendQuery(user_query, resource);
                 }
             }
+            sendQuery(teamQuery, resource);
+
             List partners = (List) partup.get("uppers");
             List<String> mergePartner = new ArrayList();
             List<String> createUniqueP = new ArrayList();
@@ -416,6 +417,7 @@ public class Main {
                 String queryT = mergeTeam + " SET t.tags=[" + ProcessTags(tags) + "]";
                 sendQuery(queryT, resource);
             }
+            
             Date deleted_at_raw = partup.getDate("deleted_at");
             if (deleted_at_raw != null) {
                 String deleted_at = date_format.format(deleted_at_raw);
@@ -425,6 +427,7 @@ public class Main {
                         "t.active=false";
                 sendQuery(query, resource);
             }
+            
             Date archived_at_raw = partup.getDate("archived_at");
             if (archived_at_raw != null) {
                 String archived_at = date_format.format(archived_at_raw);
