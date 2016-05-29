@@ -40,7 +40,24 @@ public class Main {
 
     public static void main(String[] args) {
 
-        ImportQueries(connect());
+        MongoClient mongoClient = new MongoClient();
+        MongoDatabase MDB = mongoClient.getDatabase("partup");
+        List<Document> users = MDB.getCollection("users").find().into(new ArrayList<Document>());
+        List<Document> networks = MDB.getCollection("networks").find().into(new ArrayList());
+        List<Document> partups = MDB.getCollection("partups").find().into(new ArrayList());
+        List<Document> comments = MDB.getCollection("updates").find().into(new ArrayList<Document>());
+        List<Document> contributions = MDB.getCollection("contributions").find().into(new ArrayList<Document>());
+        List<Document> ratings = MDB.getCollection("ratings").find().into(new ArrayList<Document>());
+
+        ImportUsers(connect(), users);
+        ImportNetworks(connect(), networks);
+        ImportTeams(connect(), partups);
+        ImportComments(connect(), comments);
+        ImportContributions(connect(), contributions);
+        ImportRatings(connect(), ratings);
+        SetScores(connect(), users);
+        SetSimilarities(connect());
+        CreateIndexes(connect());
 
     }
 
@@ -82,13 +99,8 @@ public class Main {
         return tagsString;
     }
 
-    private static void ImportQueries(WebResource resource) {
+    private static void ImportUsers(WebResource resource, List<Document> users) {
 
-        MongoClient mongoClient = new MongoClient();
-        MongoDatabase MDB = mongoClient.getDatabase("partup");
-
-        //User
-        List<Document> users = MDB.getCollection("users").find().into(new ArrayList<Document>());
         for (Document user : users) {
             String _id = user.getString("_id");
             String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
@@ -96,9 +108,9 @@ public class Main {
             Document settings = (Document) profile.get("settings");
             String language = settings.getString("locale");
             Document location = (Document) profile.get("location");
-            if (location!=null) {
+            if (location != null) {
                 String place_id = location.getString("place_id");
-                if (place_id!=null) {
+                if (place_id != null) {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", "");
                     String country = location.getString("country");
@@ -119,7 +131,7 @@ public class Main {
                             "u.active=true";
                     sendQuery(user_query, resource);
                 }
-            } else{
+            } else {
                 String user_query = mergeUser + " " +
                         "SET u.language='" + language + "', " +
                         "u.tags=[], " +
@@ -127,12 +139,12 @@ public class Main {
                 sendQuery(user_query, resource);
             }
             List tags = (List) profile.get("tags");
-            if (tags!=null) {
+            if (tags != null) {
                 String queryT = mergeUser + " SET u.tags=[" + ProcessTags(tags) + "]";
                 sendQuery(queryT, resource);
             }
             Date deactivatedAt_raw = user.getDate("deactivatedAt");
-            if (deactivatedAt_raw!=null){
+            if (deactivatedAt_raw != null) {
                 String deactivatedAt = date_format.format(deactivatedAt_raw);
                 String query = "MERGE (u:User {_id: '" + _id + "'}) " +
                         "SET u.deactivatedAt=" + deactivatedAt + ", " +
@@ -140,9 +152,9 @@ public class Main {
                 sendQuery(query, resource);
             }
             Document meurs = (Document) profile.get("meurs");
-            if (meurs!=null){
+            if (meurs != null) {
                 Boolean fetched_results = (Boolean) meurs.get("fetched_results");
-                if (fetched_results!=null){
+                if (fetched_results != null) {
                     List results = (List) meurs.get("results");
                     Document results_0 = (Document) results.get(0);
                     int code_0 = results_0.getInteger("code");
@@ -167,8 +179,9 @@ public class Main {
         }
         System.out.println(users.size() + " users imported into Neo4j.");
 
-        //Networks
-        List<Document> networks = MDB.getCollection("networks").find().into(new ArrayList());
+    }
+    private static void ImportNetworks(WebResource resource, List<Document> networks) {
+
         for (Document network : networks) {
             String _id = network.getString("_id");
             String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
@@ -177,9 +190,9 @@ public class Main {
             String admin_id = adminList.get(0);
             String language = network.getString("language");
             Document location = (Document) network.get("location");
-            if (location!=null) {
+            if (location != null) {
                 String place_id = location.getString("place_id");
-                if (place_id!=null) {
+                if (place_id != null) {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", "");
                     String country = location.getString("country");
@@ -214,7 +227,7 @@ public class Main {
                 sendQuery(query, resource);
             }
             List uppers = (List) network.get("uppers");
-            if (uppers!=null) {
+            if (uppers != null) {
                 List<String> mergeUser = new ArrayList();
                 List<String> createUnique = new ArrayList();
                 for (int i = 0; i < uppers.size(); i++) {
@@ -228,15 +241,16 @@ public class Main {
                 sendQuery(query, resource);
             }
             List tags = (List) network.get("tags");
-            if (tags!=null) {
+            if (tags != null) {
                 String queryT = mergeNetwork + " SET n.tags=[" + ProcessTags(tags) + "]";
                 sendQuery(queryT, resource);
             }
         }
         System.out.println(networks.size() + " networks imported into Neo4j.");
 
-        //Teams
-        List<Document> partups = MDB.getCollection("partups").find().into(new ArrayList());
+    }
+    private static void ImportTeams(WebResource resource, List<Document> partups) {
+
         for (Document partup : partups) {
             String _id = partup.getString("_id");
             String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
@@ -251,11 +265,11 @@ public class Main {
             String network_id = partup.getString("network_id");
             Date created_at_raw = partup.getDate("created_at");
             String created_at = date_format.format(created_at_raw);
-            if (network_id!=null) {
+            if (network_id != null) {
                 Document location = (Document) partup.get("location");
-                if (location!=null) {
+                if (location != null) {
                     String place_id = location.getString("place_id");
-                    if (place_id!=null) {
+                    if (place_id != null) {
                         String city_raw = location.getString("city");
                         String city = city_raw.replace("'", "");
                         String country = location.getString("country");
@@ -269,12 +283,12 @@ public class Main {
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
-                                "t.type='"+ type_partup + "', " +
+                                "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + ", " +
+                                "t.created_at=" + created_at + " " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
@@ -287,36 +301,36 @@ public class Main {
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
-                                "t.type='"+ type_partup + "', " +
+                                "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + ", " +
+                                "t.created_at=" + created_at + " " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                         sendQuery(user_query, resource);
                     }
-                } else{
+                } else {
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
-                            "t.type='"+ type_partup + "', " +
+                            "t.type='" + type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.activity_count=" + activity_count + ", " +
                             "t.partners=1, " +
                             "t.active=true, " +
-                            "t.created_at=" + created_at + ", " +
+                            "t.created_at=" + created_at + " " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     sendQuery(user_query, resource);
                 }
             } else {
                 Document location = (Document) partup.get("location");
-                if (location!=null) {
+                if (location != null) {
                     String place_id = location.getString("place_id");
-                    if (place_id!=null) {
+                    if (place_id != null) {
                         String city_raw = location.getString("city");
                         String city = city_raw.replace("'", "");
                         String country = location.getString("country");
@@ -329,12 +343,12 @@ public class Main {
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
-                                "t.type='"+ type_partup + "', " +
+                                "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + ", " +
+                                "t.created_at=" + created_at + " " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
@@ -346,28 +360,28 @@ public class Main {
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
-                                "t.type='"+ type_partup + "', " +
+                                "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + ", " +
+                                "t.created_at=" + created_at + " " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                         sendQuery(user_query, resource);
                     }
-                } else{
+                } else {
                     String user_query = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
-                            "t.type='"+ type_partup + "', " +
+                            "t.type='" + type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.activity_count=" + activity_count + ", " +
                             "t.partners=1, " +
                             "t.active=true, " +
-                            "t.created_at=" + created_at + ", " +
+                            "t.created_at=" + created_at + " " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     sendQuery(user_query, resource);
                 }
@@ -385,7 +399,7 @@ public class Main {
             sendQuery(queryP, resource);
 
             List supporters = (List) partup.get("supporters");
-            if (supporters!=null) {
+            if (supporters != null) {
                 List<String> mergeSupporter = new ArrayList();
                 List<String> createUniqueS = new ArrayList();
                 for (int i = 0; i < supporters.size(); i++) {
@@ -398,12 +412,12 @@ public class Main {
                 sendQuery(queryS, resource);
             }
             List tags = (List) partup.get("tags");
-            if (tags!=null) {
+            if (tags != null) {
                 String queryT = mergeTeam + " SET t.tags=[" + ProcessTags(tags) + "]";
                 sendQuery(queryT, resource);
             }
             Date deleted_at_raw = partup.getDate("deleted_at");
-            if (deleted_at_raw!=null){
+            if (deleted_at_raw != null) {
                 String deleted_at = date_format.format(deleted_at_raw);
                 String query = "MERGE (t:Team {_id: '" + _id + "'}) " +
                         "SET t.deleted_at=" + deleted_at + ", " +
@@ -412,7 +426,7 @@ public class Main {
                 sendQuery(query, resource);
             }
             Date archived_at_raw = partup.getDate("archived_at");
-            if (archived_at_raw!=null){
+            if (archived_at_raw != null) {
                 String archived_at = date_format.format(archived_at_raw);
                 String query = "MERGE (t:Team {_id: '" + _id + "'}) " +
                         "SET t.archived_at=" + archived_at + ", " +
@@ -423,13 +437,14 @@ public class Main {
         }
         System.out.println(partups.size() + " teams imported into Neo4j.");
 
-        //Comments
-        List<Document> comments = MDB.getCollection("updates").find().into(new ArrayList<Document>());
+    }
+    private static void ImportComments(WebResource resource, List<Document> comments) {
+
         int count_comments = 0;
         for (Document comment : comments) {
             String type = comment.getString("type");
             String _id = comment.getString("_id");
-            if (type.equals("partups_message_added") || type.equals("partups_activities_comments_added") || type.equals("partups_contributions_comments_added")){
+            if (type.equals("partups_message_added") || type.equals("partups_activities_comments_added") || type.equals("partups_contributions_comments_added")) {
                 String upper_id = comment.getString("upper_id");
                 String partup_id = comment.getString("partup_id");
                 String query = "MATCH (u:User {_id: '" + upper_id + "'})-[r:ACTIVE_IN]->(t:Team {_id: '" + partup_id + "'})" +
@@ -438,13 +453,13 @@ public class Main {
                 count_comments = count_comments + 1;
             }
             int comments_count = comment.getInteger("comments_count");
-            if (comments_count > 0){
+            if (comments_count > 0) {
                 List repliesList = (List) comment.get("comments");
                 for (int i = 0; i < repliesList.size(); i++) {
                     Document reply = (Document) repliesList.get(i);
                     String reply_type = reply.getString("type");
                     Boolean reply_system = reply.getBoolean("system");
-                    if (reply_type!=null && reply_system!=null){
+                    if (reply_type != null && reply_system != null) {
                         Document reply_creator = (Document) reply.get("creator");
                         String reply_upper_id = reply_creator.getString("_id");
                         String reply_partup_id = comment.getString("partup_id");
@@ -458,8 +473,9 @@ public class Main {
         }
         System.out.println(count_comments + " comments imported into Neo4j.");
 
-        //Contributions
-        List<Document> contributions = MDB.getCollection("contributions").find().into(new ArrayList<Document>());
+    }
+    private static void ImportContributions(WebResource resource, List<Document> contributions) {
+
         int count_contributions = 0;
         for (Document contribution : contributions) {
             Boolean verified = contribution.getBoolean("verified");
@@ -474,8 +490,11 @@ public class Main {
         }
         System.out.println(count_contributions + " contributions imported into Neo4j.");
 
+    }
+    private static void ImportRatings(WebResource resource, List<Document> ratings) {
+
         //Ratings
-        List<Document> ratings = MDB.getCollection("ratings").find().into(new ArrayList<Document>());
+
         for (Document rating : ratings) {
             String rated_upper_id = rating.getString("rated_upper_id");
             String partup_id = rating.getString("partup_id");
@@ -486,33 +505,40 @@ public class Main {
         }
         System.out.println(ratings.size() + " ratings imported into Neo4j.");
 
-        //Score
-//        for (Document user : users) {
-//            String _id = user.getString("_id");
-//            String query = "MATCH (u:User)-[r:ACTIVE_IN]->(t:Team) " +
-//                    "WHERE u._id='" + _id + "' " +
-//                    "WITH MAX(r.contributions) AS maxContributions, MAX(r.comments) AS maxComments, u " +
-//                    "MATCH (u)-[r:ACTIVE_IN]->(t:Team) " +
-//                    "WITH r.role+(r.contributions/(toFloat(maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(maxComments)+0.00001)*1.0) AS part, r " +
-//                    "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
-//            sendQuery(query, resource);
-//        }
+    }
+    private static void SetScores(WebResource resource, List<Document> users) {
 
-        //Similarity
-//        String query = "MATCH (t1:Team), (t2:Team) " +
-//                "WHERE t1<>t2 " +
-//                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User) " +
-//                "WITH toFloat(AVG(r.participation)) AS t1Mean, t1, t2 " +
-//                "MATCH (t2)<-[r:ACTIVE_IN]-(u:User) " +
-//                "WITH toFloat(AVG(r.participation)) AS t2Mean, t1Mean, t1, t2 " +
-//                "MATCH (t1)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2) " +
-//                "WITH SUM((r1.participation-t1Mean)*(r2.participation-t2Mean)) AS numerator," +
-//                "SQRT(SUM((r1.participation-t1Mean)^2) * SUM((r2.participation-t2Mean)^2)) AS denominator, t1, t2, COUNT(r1) AS r1Count " +
-//                "WHERE denominator<>0 AND r1Count>2 " +
-//                "MERGE (t1)-[q:SIMILARITY]-(t2) " +
-//                "SET q.coefficient=(numerator/denominator)";
-//        sendQuery(query, resource);
-//
+        for (Document user : users) {
+            String _id = user.getString("_id");
+            String query = "MATCH (u:User)-[r:ACTIVE_IN]->(t:Team) " +
+                    "WHERE u._id='" + _id + "' " +
+                    "WITH MAX(r.contributions) AS maxContributions, MAX(r.comments) AS maxComments, u " +
+                    "MATCH (u)-[r:ACTIVE_IN]->(t:Team) " +
+                    "WITH r.role+(r.contributions/(toFloat(maxContributions)+0.00001)*2.0)+(r.comments/(toFloat(maxComments)+0.00001)*1.0) AS part, r " +
+                    "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
+            sendQuery(query, resource);
+        }
+
+    }
+    private static void SetSimilarities(WebResource resource) {
+
+        String query = "MATCH (t1:Team), (t2:Team) " +
+                "WHERE t1<>t2 " +
+                "MATCH (t1)<-[r:ACTIVE_IN]-(u:User) " +
+                "WITH toFloat(AVG(r.participation)) AS t1Mean, t1, t2 " +
+                "MATCH (t2)<-[r:ACTIVE_IN]-(u:User) " +
+                "WITH toFloat(AVG(r.participation)) AS t2Mean, t1Mean, t1, t2 " +
+                "MATCH (t1)<-[r1:ACTIVE_IN]-(u:User)-[r2:ACTIVE_IN]->(t2) " +
+                "WITH SUM((r1.participation-t1Mean)*(r2.participation-t2Mean)) AS numerator," +
+                "SQRT(SUM((r1.participation-t1Mean)^2) * SUM((r2.participation-t2Mean)^2)) AS denominator, t1, t2, COUNT(r1) AS r1Count " +
+                "WHERE denominator<>0 AND r1Count>2 " +
+                "MERGE (t1)-[q:SIMILARITY]-(t2) " +
+                "SET q.coefficient=(numerator/denominator)";
+        sendQuery(query, resource);
+
+    }
+    private static void CreateIndexes(WebResource resource) {
+
         sendQuery("CREATE INDEX ON :User(_id)", resource);
         sendQuery("CREATE INDEX ON :Network(_id)", resource);
         sendQuery("CREATE INDEX ON :Team(_id)", resource);
