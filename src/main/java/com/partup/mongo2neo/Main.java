@@ -8,20 +8,16 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.filter.HTTPBasicAuthFilter;
 
-import java.awt.*;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang3.StringUtils;
 
 import org.bson.Document;
 
-import org.neo4j.cypher.internal.compiler.v2_2.perty.Doc;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
@@ -280,11 +276,9 @@ public class Main {
             String type_partup = partup.getString("type");
             String phase = partup.getString("phase");
             Integer activity_count = (Integer) partup.get("activity_count");
-            Date end_date_raw = partup.getDate("end_date");
-            String end_date = date_format.format(end_date_raw);
+            String end_date = date_format.format(partup.getDate("end_date"));
             String network_id = partup.getString("network_id");
-            Date created_at_raw = partup.getDate("created_at");
-            String created_at = date_format.format(created_at_raw);
+            String created_at = date_format.format(partup.getDate("created_at"));
             if (network_id != null) {
                 Document location = (Document) partup.get("location");
                 if (location != null) {
