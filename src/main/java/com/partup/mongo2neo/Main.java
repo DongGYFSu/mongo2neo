@@ -52,13 +52,13 @@ public class Main {
         ImportUsers();
         ImportNetworks();
         ImportTeams();
-        ImportComments();
-        ImportContributions();
-        ImportRatings();
-
-        SetScores();
-        SetSimilarities();
-        CreateIndexes();
+//        ImportComments();
+//        ImportContributions();
+//        ImportRatings();
+//
+//        SetScores();
+//        SetSimilarities();
+//        CreateIndexes();
 
     }
 
@@ -87,11 +87,11 @@ public class Main {
                 .entity( payload )
                 .post( ClientResponse.class );
 
-        System.out.println(String.format(
-                "POST [%s] to [%s], status code [%d], returned data: "
-                        + System.getProperty("line.separator") + "%s",
-                payload, txUri, response.getStatus(),
-                response.getEntity(String.class)));
+//        System.out.println(String.format(
+//                "POST [%s] to [%s], status code [%d], returned data: "
+//                        + System.getProperty("line.separator") + "%s",
+//                payload, txUri, response.getStatus(),
+//                response.getEntity(String.class)));
 
         response.close();
 
@@ -118,6 +118,7 @@ public class Main {
             String _id = user.getString("_id");
             String mergeUser = String.format("MERGE (u:User {_id:'%s'})", _id);
             Document profile = (Document) user.get("profile");
+            String name = profile.getString("normalized_name");
             Document settings = (Document) profile.get("settings");
             String language = settings.getString("locale");
             Document location = (Document) profile.get("location");
@@ -131,20 +132,23 @@ public class Main {
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             mergeUser + " " +
-                            "SET u.language='" + language + "', " +
+                            "SET u.name='" + name + "', " +
+                            "u.language='" + language + "', " +
                             "u.tags=[], " +
                             "u.active=true " +
                             "CREATE UNIQUE (u)-[:LIVES_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
                 } else {
                     userQuery = mergeUser + " " +
-                            "SET u.language='" + language + "', " +
+                            "SET u.name='" + name + "', " +
+                            "u.language='" + language + "', " +
                             "u.tags=[], " +
                             "u.active=true";
                 }
             } else {
                 userQuery = mergeUser + " " +
-                        "SET u.language='" + language + "', " +
+                        "SET u.name='" + name + "', " +
+                        "u.language='" + language + "', " +
                         "u.tags=[], " +
                         "u.active=true";
             }
@@ -199,10 +203,14 @@ public class Main {
         for (Document network : networksDocuments) {
             String _id = network.getString("_id");
             String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
+            String name_raw = network.getString("name");
+            String name = name_raw.replace("'", "");
             int privacy_type = network.getInteger("privacy_type");
             List<String> adminList = (List<String>) network.get("admins");
             String admin_id = adminList.get(0);
             String language = network.getString("language");
+            String slug = network.getString("slug");
+            String created_at = date_format.format(network.getDate("created_at"));
             Document location = (Document) network.get("location");
             if (location != null) {
                 String place_id = location.getString("place_id");
@@ -215,26 +223,35 @@ public class Main {
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
                             "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                            "SET n.tags=[], " +
+                            "SET n.name='" + name + "', " +
+                            "n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
-                            "n.language='" + language + "' " +
+                            "n.language='" + language + "', " +
+                            "n.slug='" + slug + "', " +
+                            "n.created_at=" + created_at + " " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n), " +
                             "(n)-[:LOCATED_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
                 } else {
                     networkQuery = mergeNetwork + " " +
                             "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                            "SET n.tags=[], " +
+                            "SET n.name='" + name + "', " +
+                            "n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
-                            "n.language='" + language + "' " +
+                            "n.language='" + language + "', " +
+                            "n.slug='" + slug + "', " +
+                            "n.created_at=" + created_at + " " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
                 }
             } else {
                 networkQuery = "MERGE (u:User {_id: '" + admin_id + "'}) " +
                         mergeNetwork + " " +
-                        "SET n.tags=[], " +
+                        "SET n.name='" + name + "', " +
+                        "n.tags=[], " +
                         "n.privacy_type=" + privacy_type + ", " +
-                        "n.language='" + language + "' " +
+                        "n.language='" + language + "', " +
+                        "n.slug='" + slug + "', " +
+                        "n.created_at=" + created_at + " " +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
             }
             sendQuery(networkQuery);
@@ -270,6 +287,8 @@ public class Main {
         for (Document partup : teamsDocuments) {
             String _id = partup.getString("_id");
             String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
+            String name_raw = partup.getString("name");
+            String name = name_raw.replace("'", "");
             String creator_id = partup.getString("creator_id");
             String language = partup.getString("language");
             int privacy_type = partup.getInteger("privacy_type");
@@ -293,7 +312,8 @@ public class Main {
                                 "MERGE (n:Network {_id: '" + network_id + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.end_date=" + end_date + ", " +
+                                "SET t.name='" + name + "', " +
+                                "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -310,7 +330,8 @@ public class Main {
                     } else {
                         teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.end_date=" + end_date + ", " +
+                                "SET t.name='" + name + "', " +
+                                "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -325,7 +346,8 @@ public class Main {
                 } else {
                     teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
-                            "SET t.end_date=" + end_date + ", " +
+                            "SET t.name='" + name + "', " +
+                            "t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
@@ -350,7 +372,8 @@ public class Main {
                                 "MERGE (co:Country {name: '" + country + "'}) " +
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.end_date=" + end_date + ", " +
+                                "SET t.name='" + name + "', " +
+                                "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -366,7 +389,8 @@ public class Main {
                     } else {
                         teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
-                                "SET t.end_date=" + end_date + ", " +
+                                "SET t.name='" + name + "', " +
+                                "t.end_date=" + end_date + ", " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -381,7 +405,8 @@ public class Main {
                 } else {
                     teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
-                            "SET t.end_date=" + end_date + ", " +
+                            "SET t.name='" + name + "', " +
+                            "t.end_date=" + end_date + ", " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
