@@ -44,6 +44,10 @@ public class Main {
 
     private static WebResource resource;
 
+    /**
+     *
+     * @param args
+     */
     public static void main(String[] args) {
 
         MongoConnect();
@@ -228,7 +232,7 @@ public class Main {
                             "n.privacy_type=" + privacy_type + ", " +
                             "n.language='" + language + "', " +
                             "n.slug='" + slug + "', " +
-                            "n.created_at=" + created_at + " " +
+                            "n.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n), " +
                             "(n)-[:LOCATED_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
@@ -240,7 +244,7 @@ public class Main {
                             "n.privacy_type=" + privacy_type + ", " +
                             "n.language='" + language + "', " +
                             "n.slug='" + slug + "', " +
-                            "n.created_at=" + created_at + " " +
+                            "n.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
                 }
             } else {
@@ -251,7 +255,7 @@ public class Main {
                         "n.privacy_type=" + privacy_type + ", " +
                         "n.language='" + language + "', " +
                         "n.slug='" + slug + "', " +
-                        "n.created_at=" + created_at + " " +
+                        "n.created_at='" + created_at + "' " +
                         "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
             }
             sendQuery(networkQuery);
@@ -313,7 +317,7 @@ public class Main {
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "t.end_date='" + end_date + "', " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -322,7 +326,7 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + " " +
+                                "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:PART_OF]->(n), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
@@ -331,7 +335,7 @@ public class Main {
                         teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "t.end_date='" + end_date + "', " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -340,14 +344,14 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + " " +
+                                "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     }
                 } else {
                     teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.name='" + name + "', " +
-                            "t.end_date=" + end_date + ", " +
+                            "t.end_date='" + end_date + "', " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
@@ -356,7 +360,7 @@ public class Main {
                             "t.activity_count=" + activity_count + ", " +
                             "t.partners=1, " +
                             "t.active=true, " +
-                            "t.created_at=" + created_at + " " +
+                            "t.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                 }
             } else {
@@ -373,7 +377,7 @@ public class Main {
                                 "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "t.end_date='" + end_date + "', " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -382,7 +386,7 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + " " +
+                                "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
@@ -390,7 +394,7 @@ public class Main {
                         teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
-                                "t.end_date=" + end_date + ", " +
+                                "t.end_date='" + end_date + "', " +
                                 "t.tags=[], " +
                                 "t.language='" + language + "', " +
                                 "t.privacy_type=" + privacy_type + ", " +
@@ -399,14 +403,14 @@ public class Main {
                                 "t.activity_count=" + activity_count + ", " +
                                 "t.partners=1, " +
                                 "t.active=true, " +
-                                "t.created_at=" + created_at + " " +
+                                "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                     }
                 } else {
                     teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.name='" + name + "', " +
-                            "t.end_date=" + end_date + ", " +
+                            "t.end_date='" + end_date + "', " +
                             "t.tags=[], " +
                             "t.language='" + language + "', " +
                             "t.privacy_type=" + privacy_type + ", " +
@@ -415,7 +419,7 @@ public class Main {
                             "t.activity_count=" + activity_count + ", " +
                             "t.partners=1, " +
                             "t.active=true, " +
-                            "t.created_at=" + created_at + " " +
+                            "t.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
                 }
             }
@@ -456,7 +460,7 @@ public class Main {
             if (deleted_at_raw != null) {
                 String deleted_at = date_format.format(deleted_at_raw);
                 String query = "MERGE (t:Team {_id: '" + _id + "'}) " +
-                        "SET t.deleted_at=" + deleted_at + ", " +
+                        "SET t.deleted_at='" + deleted_at + "', " +
                         "t.deleted=true, " +
                         "t.active=false";
                 sendQuery(query);
@@ -466,7 +470,7 @@ public class Main {
             if (archived_at_raw != null) {
                 String archived_at = date_format.format(archived_at_raw);
                 String query = "MERGE (t:Team {_id: '" + _id + "'}) " +
-                        "SET t.archived_at=" + archived_at + ", " +
+                        "SET t.archived_at='" + archived_at + "', " +
                         "t.archived=true, " +
                         "t.active=false";
                 sendQuery(query);
