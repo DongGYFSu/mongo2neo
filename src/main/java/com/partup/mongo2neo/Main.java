@@ -332,7 +332,8 @@ public class Main {
                                 "(t)-[:LOCATED_IN]->(ci), " +
                                 "(ci)-[:LOCATED_IN]->(co)";
                     } else {
-                        teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
+                        teamQuery = "MERGE (n:Network {_id: '" + network_id + "'}) " +
+                                "MERGE (u:User {_id: '" + creator_id + "'}) " +
                                 mergeTeam + " " +
                                 "SET t.name='" + name + "', " +
                                 "t.end_date='" + end_date + "', " +
@@ -345,10 +346,12 @@ public class Main {
                                 "t.partners=1, " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
-                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
+                                "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)," +
+                                "(t)-[:PART_OF]->(n)";
                     }
                 } else {
-                    teamQuery = "MERGE (u:User {_id: '" + creator_id + "'}) " +
+                    teamQuery = "MERGE (n:Network {_id: '" + network_id + "'}) " +
+                            "MERGE (u:User {_id: '" + creator_id + "'}) " +
                             mergeTeam + " " +
                             "SET t.name='" + name + "', " +
                             "t.end_date='" + end_date + "', " +
@@ -361,7 +364,8 @@ public class Main {
                             "t.partners=1, " +
                             "t.active=true, " +
                             "t.created_at='" + created_at + "' " +
-                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
+                            "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
+                            "(t)-[:PART_OF]->(n)";
                 }
             } else {
                 Document location = (Document) partup.get("location");
