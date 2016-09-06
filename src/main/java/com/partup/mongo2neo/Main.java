@@ -105,10 +105,21 @@ public class Main {
 
         response.close();
 
-        //Local database connection via the filepath.
+        /** Local database connection via the filepath.
+         *  Registers a shutdown hook for the Neo4j instance so that it shuts down
+         *  nicely when the VM exits (even if you "Ctrl-C" the running application).
+         */
 //        String DB_PATH = "data/graph.db";
 //        GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File( DB_PATH ));
 //        graphDb.execute(query);
+//        Runtime.getRuntime().addShutdownHook( new Thread()
+//        {
+//            @Override
+//            public void run()
+//            {
+//                graphDb.shutdown();
+//            }
+//        } );
     }
 
     private static String ProcessTags(List tags) {
@@ -642,20 +653,5 @@ public class Main {
         System.out.println("Happy Hunting!");
         return;
 
-    }
-
-    private static void registerShutdownHook( final GraphDatabaseService graphDb )
-    {
-        // Registers a shutdown hook for the Neo4j instance so that it
-        // shuts down nicely when the VM exits (even if you "Ctrl-C" the
-        // running application).
-        Runtime.getRuntime().addShutdownHook( new Thread()
-        {
-            @Override
-            public void run()
-            {
-                graphDb.shutdown();
-            }
-        } );
     }
 }
