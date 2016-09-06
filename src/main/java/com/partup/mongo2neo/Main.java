@@ -47,10 +47,7 @@ public class Main {
 
     private static WebResource resource;
 
-    /**
-     *
-     * @param args
-     */
+
     public static void main(String[] args) {
 
         MongoConnect();
@@ -144,8 +141,8 @@ public class Main {
         sendQuery("CREATE CONSTRAINT ON (C:City) ASSERT c._id IS UNIQUE");
         sendQuery("CREATE CONSTRAINT ON (c:Country) ASSERT c.name IS UNIQUE");
         sendQuery("CREATE CONSTRAINT ON (s:Strength) ASSERT s.code IS UNIQUE");
-        System.out.println("Constraints created for User, Network, Team, City, Country and Strength nodes in Neo4j");
 
+        System.out.println("Constraints created for User, Network, Team, City, Country and Strength nodes in Neo4j");
     }
 
     private static void ImportUsers() {
@@ -337,6 +334,7 @@ public class Main {
             String type_partup = partup.getString("type");
             String phase = partup.getString("phase");
             Integer activity_count = (Integer) partup.get("activity_count");
+            String slug = partup.getString("slug");
             String end_date = date_format.format(partup.getDate("end_date"));
             String network_id = partup.getString("network_id");
             String created_at = date_format.format(partup.getDate("created_at"));
@@ -362,7 +360,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.partners=1, " +
+                                "t.slug=" + slug +", " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
@@ -381,7 +379,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.partners=1, " +
+                                "t.slug=" + slug + ", " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)," +
@@ -399,7 +397,7 @@ public class Main {
                             "t.type='" + type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.activity_count=" + activity_count + ", " +
-                            "t.partners=1, " +
+                            "t.slug=" + slug + ", " +
                             "t.active=true, " +
                             "t.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
@@ -426,7 +424,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.partners=1, " +
+                                "t.slug=" + slug + ", " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
@@ -443,7 +441,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.partners=1, " +
+                                "t.slug=" + slug + ", " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
@@ -459,7 +457,7 @@ public class Main {
                             "t.type='" + type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.activity_count=" + activity_count + ", " +
-                            "t.partners=1, " +
+                            "t.slug=" + slug + ", " +
                             "t.active=true, " +
                             "t.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
