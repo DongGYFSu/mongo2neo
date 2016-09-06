@@ -55,6 +55,8 @@ public class Main {
 
         CreateConstraints();
 
+        System.out.println("Importing into Neo4j started.");
+
         ImportUsers();
         ImportNetworks();
         ImportTeams();
@@ -379,7 +381,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.slug=" + slug +", " +
+                                "t.slug='" + slug + "', " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
@@ -398,7 +400,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.slug=" + slug + ", " +
+                                "t.slug='" + slug + "', " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)," +
@@ -416,7 +418,7 @@ public class Main {
                             "t.type='" + type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.activity_count=" + activity_count + ", " +
-                            "t.slug=" + slug + ", " +
+                            "t.slug='" + slug + "', " +
                             "t.active=true, " +
                             "t.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
@@ -443,7 +445,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.slug=" + slug + ", " +
+                                "t.slug='" + slug + "', " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t), " +
@@ -460,7 +462,7 @@ public class Main {
                                 "t.type='" + type_partup + "', " +
                                 "t.phase='" + phase + "', " +
                                 "t.activity_count=" + activity_count + ", " +
-                                "t.slug=" + slug + ", " +
+                                "t.slug='" + slug + "', " +
                                 "t.active=true, " +
                                 "t.created_at='" + created_at + "' " +
                                 "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
@@ -476,7 +478,7 @@ public class Main {
                             "t.type='" + type_partup + "', " +
                             "t.phase='" + phase + "', " +
                             "t.activity_count=" + activity_count + ", " +
-                            "t.slug=" + slug + ", " +
+                            "t.slug='" + slug + "', " +
                             "t.active=true, " +
                             "t.created_at='" + created_at + "' " +
                             "CREATE UNIQUE (u)-[:ACTIVE_IN {creator:true, comments:0, contributions:0, pageViews:0, participation:0.0, ratings:[], role:2.0}]->(t)";
@@ -509,6 +511,7 @@ public class Main {
                 String queryS = StringUtils.join(mergeSupporter, " ") + " " + mergeTeam + " " + StringUtils.join(createUniqueS, " ");
                 sendQuery(queryS);
             }
+
             List tags = (List) partup.get("tags");
             if (tags != null) {
                 String queryT = mergeTeam + " SET t.tags=[" + ProcessTags(tags) + "]";
