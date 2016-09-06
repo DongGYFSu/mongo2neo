@@ -55,16 +55,17 @@ public class Main {
 
         CreateConstraints();
 
-//        ImportUsers();
+        ImportUsers();
         ImportNetworks();
-//        ImportTeams();
-//        ImportComments();
-//        ImportContributions();
-//        ImportRatings();
-//
-//        SetScores();
-//        SetSimilarities();
+        ImportTeams();
+        ImportComments();
+        ImportContributions();
+        ImportRatings();
 
+        SetScores();
+        SetSimilarities();
+
+        System.out.println("Happy Hunting!");
 
     }
 
@@ -244,8 +245,6 @@ public class Main {
             //Networks do not have normalized names, but accept special characters.
             String name = name_raw.replace("'", "");
             int privacy_type = network.getInteger("privacy_type");
-//            List<String> adminList = (List<String>) network.get("admins");
-//            String admin_id = adminList.get(0);
             String language = network.getString("language");
             String slug = network.getString("slug");
             String created_at = date_format.format(network.getDate("created_at"));
@@ -301,6 +300,7 @@ public class Main {
                 sendQuery(queryUppers);
             }
 
+            //Sets the admin status for the listed users as property on the user-network-edge.
             List<String> adminsList = (List<String>) network.get("admins");
             if (adminsList != null) {
                 List<String> mergeAdmins = new ArrayList();
@@ -314,6 +314,7 @@ public class Main {
                 sendQuery(queryAdmins);
             }
 
+            //Sets the colleague status for the listed users as property on the user-network-edge.
             List<String> colleaguesList = (List<String>) network.get("colleagues");
             if (colleaguesList != null) {
                 List<String> mergeColleagues = new ArrayList();
@@ -651,6 +652,7 @@ public class Main {
          *  This score is the Pearson correlation-based similarity.
          *  It is based on the participation score of users in teams.
          */
+
         String query = "MATCH (t1:Team), (t2:Team) " +
                 "WHERE t1<>t2 " +
                 "MATCH (t1)<-[r:ACTIVE_IN]-(u:User) " +
@@ -665,9 +667,6 @@ public class Main {
                 "SET q.coefficient=(numerator/denominator)";
         sendQuery(query);
         System.out.println("Similarity scores set in Neo4j.");
-
-        System.out.println("Happy Hunting!");
-        return;
 
     }
 }
