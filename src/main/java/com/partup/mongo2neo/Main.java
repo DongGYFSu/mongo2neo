@@ -56,16 +56,18 @@ public class Main {
         MongoConnect();
         NeoConnect();
 
+        CreateConstraints();
+
         ImportUsers();
         ImportNetworks();
         ImportTeams();
-//        ImportComments();
-//        ImportContributions();
-//        ImportRatings();
-//
-//        SetScores();
-//        SetSimilarities();
-//        CreateIndexes();
+        ImportComments();
+        ImportContributions();
+        ImportRatings();
+
+        SetScores();
+        SetSimilarities();
+
 
     }
 
@@ -116,6 +118,23 @@ public class Main {
         }
         String tagsString = "'" + StringUtils.join(tagsList, "','") + "'";
         return tagsString;
+    }
+
+    private static void CreateConstraints() {
+
+        /** Creates constraints on a property for a node type.
+         *  A constraint restricts the creation of a new node with the same value for the property.
+         *  Automatically also creates a index for this property. This improves the performance of the database.
+         */
+
+        sendQuery("CREATE CONSTRAINT ON (u:User) ASSERT u._id IS UNIQUE");
+        sendQuery("CREATE CONSTRAINT ON (n:Network) ASSERT n._id IS UNIQUE");
+        sendQuery("CREATE CONSTRAINT ON (t:Team) ASSERT t._id IS UNIQUE");
+        sendQuery("CREATE CONSTRAINT ON (C:City) ASSERT c._id IS UNIQUE");
+        sendQuery("CREATE CONSTRAINT ON (c:Country) ASSERT c.name IS UNIQUE");
+        sendQuery("CREATE CONSTRAINT ON (s:Strength) ASSERT s.code IS UNIQUE");
+        System.out.println("Constraints created for User, Network, Team, City, Country and Strength nodes in Neo4j");
+
     }
 
     private static void ImportUsers() {
@@ -596,6 +615,7 @@ public class Main {
                     "SET r.participation=((REDUCE(avg=0, i IN r.ratings | avg + (i/20)))+part)/(LENGTH(r.ratings)+1)";
             sendQuery(query);
         }
+        System.out.println("Participation scores set in Neo4j.");
 
     }
     private static void SetSimilarities() {
@@ -617,21 +637,11 @@ public class Main {
                 "MERGE (t1)-[q:SIMILARITY]-(t2) " +
                 "SET q.coefficient=(numerator/denominator)";
         sendQuery(query);
-
-    }
-    private static void CreateIndexes() {
-
-        sendQuery("CREATE INDEX ON :User(_id)");
-        sendQuery("CREATE INDEX ON :Network(_id)");
-        sendQuery("CREATE INDEX ON :Team(_id)");
-        sendQuery("CREATE INDEX ON :City(_id)");
-        sendQuery("CREATE INDEX ON :Country(name)");
-        sendQuery("CREATE INDEX ON :Strength(code)");
-        System.out.println("Indexes for User, Network, Team, City, Country and Strength nodes created in Neo4j");
+        System.out.println("Similarity scores set in Neo4j.");
 
         System.out.println("Happy Hunting!");
-
         return;
+
     }
 
     private static void registerShutdownHook( final GraphDatabaseService graphDb )
