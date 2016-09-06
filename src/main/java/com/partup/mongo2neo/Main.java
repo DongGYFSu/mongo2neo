@@ -23,6 +23,9 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
  * MongoDB to Neo4j importer for Part-up data.
+ * The data can be imported via a REST-connection or local filepath.
+ * Each document is imported via one or multiple queries. This limits the scalability of this script.
+ *
  * @author Maurits van der Goes
  */
 
@@ -91,6 +94,7 @@ public class Main {
                 .entity( payload )
                 .post( ClientResponse.class );
 
+        //Prints the response from Neo4j.
 //        System.out.println(String.format(
 //                "POST [%s] to [%s], status code [%d], returned data: "
 //                        + System.getProperty("line.separator") + "%s",
@@ -99,7 +103,7 @@ public class Main {
 
         response.close();
 
-        //Local
+        //Local database connection via the filepath.
 //        String DB_PATH = "data/graph.db";
 //        GraphDatabaseService graphDb = new GraphDatabaseFactory().newEmbeddedDatabase(new File( DB_PATH ));
 //        graphDb.execute(query);
@@ -126,8 +130,10 @@ public class Main {
             Document settings = (Document) profile.get("settings");
             String language = settings.getString("locale");
             Document location = (Document) profile.get("location");
+            //A user is not required to have a location. Neo4j does not filters out null.
             if (location != null) {
                 String place_id = location.getString("place_id");
+                //A location can be removed. This leaves an empty string.
                 if (place_id != null) {
                     String city_raw = location.getString("city");
                     String city = city_raw.replace("'", "");
@@ -208,6 +214,7 @@ public class Main {
             String _id = network.getString("_id");
             String mergeNetwork = String.format("MERGE (n:Network {_id:'%s'})", _id);
             String name_raw = network.getString("name");
+            //Networks do not have normalized names, but accept special characters.
             String name = name_raw.replace("'", "");
             int privacy_type = network.getInteger("privacy_type");
             List<String> adminList = (List<String>) network.get("admins");
@@ -292,6 +299,7 @@ public class Main {
             String _id = partup.getString("_id");
             String mergeTeam = String.format("MERGE (t:Team {_id:'%s'})", _id);
             String name_raw = partup.getString("name");
+            //Teams do not have normalized names, but accept special characters.
             String name = name_raw.replace("'", "");
             String creator_id = partup.getString("creator_id");
             String language = partup.getString("language");
@@ -485,6 +493,17 @@ public class Main {
     }
     private static void ImportComments() {
 
+        /** Sets the total number of comments a user has in a team to the user-team-edge as an integer.
+         *  This total number is not directly provided by MongoDB.
+         *  It iterates through the comments collection and adds one for each match.
+         *  The comments collection is the updates collection. It contains multiple types of updates.
+         *  Only the updates with these types are considered to be comments:
+         *  - "partups_message_added"
+         *  - "partups_activities_comments_added"
+         *  - "partups_contributions_comments_added"
+         *  - Replies that are not system messages.
+         */
+
         int count_comments = 0;
         for (Document comment : commentsDocuments) {
             String type = comment.getString("type");
@@ -521,6 +540,11 @@ public class Main {
     }
     private static void ImportContributions() {
 
+        /** Sets the total number of contributions a user has in a team to the user-team-edge as an integer.
+         *  This total number is not directly provided by MongoDB.
+         *  It iterates through the contribution collection and adds one for each match.
+         */
+
         int count_contributions = 0;
         for (Document contribution : contributionsDocuments) {
             Boolean verified = contribution.getBoolean("verified");
@@ -538,7 +562,7 @@ public class Main {
     }
     private static void ImportRatings() {
 
-        //Ratings
+        //Sets the ratings a user received from other users to the user-team-edge as a collection.
 
         for (Document rating : ratingsDocuments) {
             String rated_upper_id = rating.getString("rated_upper_id");
@@ -552,6 +576,15 @@ public class Main {
 
     }
     private static void SetScores() {
+
+        /** Sets a participation score of a user in a team to the user-team-edge as a float.
+         *  This participation score is the average of two or more values:
+         *  - Implicit rating:
+         *    > The role a user has in a team: creator (2.0), partner (1.5) or supporter (1.0).
+         *    > Number of contributions compared to the maximum number of contributions by a user. Weight: 2
+         *    > Number of comments compared to the maximum number of comments by a user. Weight: 1
+         *  - Received ratings transformed to a scale of 0 to 1.
+         */
 
         for (Document user : usersDocuments) {
             String _id = user.getString("_id");
@@ -567,6 +600,10 @@ public class Main {
     }
     private static void SetSimilarities() {
 
+        /** Sets a similarity score of two teams to a new edge between those teams as a float.
+         *  This score is the Pearson correlation-based similarity.
+         *  It is based on the participation score of users in teams.
+         */
         String query = "MATCH (t1:Team), (t2:Team) " +
                 "WHERE t1<>t2 " +
                 "MATCH (t1)<-[r:ACTIVE_IN]-(u:User) " +
