@@ -55,15 +55,15 @@ public class Main {
 
         CreateConstraints();
 
-        ImportUsers();
+//        ImportUsers();
         ImportNetworks();
-        ImportTeams();
-        ImportComments();
-        ImportContributions();
-        ImportRatings();
-
-        SetScores();
-        SetSimilarities();
+//        ImportTeams();
+//        ImportComments();
+//        ImportContributions();
+//        ImportRatings();
+//
+//        SetScores();
+//        SetSimilarities();
 
 
     }
@@ -244,8 +244,8 @@ public class Main {
             //Networks do not have normalized names, but accept special characters.
             String name = name_raw.replace("'", "");
             int privacy_type = network.getInteger("privacy_type");
-            List<String> adminList = (List<String>) network.get("admins");
-            String admin_id = adminList.get(0);
+//            List<String> adminList = (List<String>) network.get("admins");
+//            String admin_id = adminList.get(0);
             String language = network.getString("language");
             String slug = network.getString("slug");
             String created_at = date_format.format(network.getDate("created_at"));
@@ -260,37 +260,31 @@ public class Main {
                             "MERGE (ci:City {name: '" + place_id + "'}) " +
                             "ON CREATE SET ci.name= '" + city + "' " +
                             "MERGE (co:Country {name: '" + country + "'}) " +
-                            "MERGE (u:User {_id: '" + admin_id + "'}) " +
                             "SET n.name='" + name + "', " +
                             "n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
                             "n.language='" + language + "', " +
                             "n.slug='" + slug + "', " +
                             "n.created_at='" + created_at + "' " +
-                            "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n), " +
-                            "(n)-[:LOCATED_IN]->(ci), " +
+                            "CREATE UNIQUE (n)-[:LOCATED_IN]->(ci), " +
                             "(ci)-[:LOCATED_IN]->(co)";
                 } else {
                     networkQuery = mergeNetwork + " " +
-                            "MERGE (u:User {_id: '" + admin_id + "'}) " +
                             "SET n.name='" + name + "', " +
                             "n.tags=[], " +
                             "n.privacy_type=" + privacy_type + ", " +
                             "n.language='" + language + "', " +
                             "n.slug='" + slug + "', " +
-                            "n.created_at='" + created_at + "' " +
-                            "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
+                            "n.created_at='" + created_at + "'";
                 }
             } else {
-                networkQuery = "MERGE (u:User {_id: '" + admin_id + "'}) " +
-                        mergeNetwork + " " +
+                networkQuery = mergeNetwork + " " +
                         "SET n.name='" + name + "', " +
                         "n.tags=[], " +
                         "n.privacy_type=" + privacy_type + ", " +
                         "n.language='" + language + "', " +
                         "n.slug='" + slug + "', " +
-                        "n.created_at='" + created_at + "' " +
-                        "CREATE UNIQUE (u)-[:MEMBER_OF {admin:true}]->(n)";
+                        "n.created_at='" + created_at + "'";
             }
             sendQuery(networkQuery);
 
@@ -299,14 +293,38 @@ public class Main {
                 List<String> mergeUser = new ArrayList();
                 List<String> createUnique = new ArrayList();
                 for (int i = 0; i < uppers.size(); i++) {
-                    if (!uppers.get(i).equals(admin_id)) {
-                        mergeUser.add(String.format("MERGE (u%s:User {_id: '%s'})", i, uppers.get(i)));
-                        createUnique.add(String.format("CREATE UNIQUE (u%s)-[:MEMBER_OF]->(n)", i));
-                    }
+                    mergeUser.add(String.format("MERGE (u%s:User {_id: '%s'})", i, uppers.get(i)));
+                    createUnique.add(String.format("CREATE UNIQUE (u%s)-[:MEMBER_OF]->(n)", i));
                 }
 
-                String query = StringUtils.join(mergeUser, " ") + " " + mergeNetwork + " " + StringUtils.join(createUnique, " ");
-                sendQuery(query);
+                String queryUppers = StringUtils.join(mergeUser, " ") + " " + mergeNetwork + " " + StringUtils.join(createUnique, " ");
+                sendQuery(queryUppers);
+            }
+
+            List<String> adminsList = (List<String>) network.get("admins");
+            if (adminsList != null) {
+                List<String> mergeAdmins = new ArrayList();
+                List<String> setAdmins = new ArrayList();
+                for (int i = 0; i < adminsList.size(); i++) {
+                    mergeAdmins.add(String.format("MERGE (:User {_id: '%s'})-[e%s:MEMBER_OF]->(n)", adminsList.get(i), i));
+                    setAdmins.add(String.format("SET e%s.admin=true", i));
+                }
+
+                String queryAdmins = mergeNetwork + " " + StringUtils.join(mergeAdmins, " ") + " " + StringUtils.join(setAdmins, " ");
+                sendQuery(queryAdmins);
+            }
+
+            List<String> colleaguesList = (List<String>) network.get("colleagues");
+            if (colleaguesList != null) {
+                List<String> mergeColleagues = new ArrayList();
+                List<String> setColleagues = new ArrayList();
+                for (int i = 0; i < colleaguesList.size(); i++) {
+                    mergeColleagues.add(String.format("MERGE (:User {_id: '%s'})-[e%s:MEMBER_OF]->(n)", colleaguesList.get(i), i));
+                    setColleagues.add(String.format("SET e%s.colleague=true", i));
+                }
+
+                String queryColleagues = mergeNetwork + " " + StringUtils.join(mergeColleagues, " ") + " " + StringUtils.join(setColleagues, " ");
+                sendQuery(queryColleagues);
             }
 
             List tags = (List) network.get("tags");
